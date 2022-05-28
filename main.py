@@ -66,19 +66,10 @@ from YOLOv4 import YOLO
 # yolo = YOLO("cross-hands-yolov4-tiny.cfg", "cross-hands-yolov4-tiny.weights", ["hand"])
 yolo = YOLO("models/cross-hands.cfg", "models/cross-hands.weights", ["hand"])
 yolo.size = 416
-yolo.confidence = 0.5
+yolo.confidence = 0.25
 
 print("extracting tags for each image...")
-img = cv2.imread("rgb/30.jpg")
-
-"""
-if img.endswith(".txt"):
-    with open(img, "r") as myfile:
-        lines = myfile.readlines()
-        files = map(lambda x: os.path.join(os.path.dirname(img), x.strip()), lines)
-else:
-    files = sorted(glob.glob("%s/*.jpg" % img))
-"""
+img = cv2.imread("rgb/09.jpg")
 
 conf_sum = 0
 detection_count = 0
@@ -97,10 +88,10 @@ for detection in results:
     detection_count += 1
 
     # draw a bounding box rectangle and label on the image
-    color = (255, 0, 255)
-    cv2.rectangle(img, (x, y), (x + w, y + h), color, 1)
+    color = (0, 0, 255)
+    cv2.rectangle(img, (x, y), (x + w, y + h), color, 3)
     text = "%s (%s)" % (name, round(confidence, 2))
-    cv2.putText(img, text, (x, y - 5), cv2.FONT_HERSHEY_PLAIN, 1, color, 1)
+    cv2.putText(img, text, (x, y - 5), cv2.FONT_HERSHEY_PLAIN, 1, color, 2)
     print("%s with %s confidence" % (name, round(confidence, 2)))
 
     # cv2.imwrite("export.jpg", mat)
