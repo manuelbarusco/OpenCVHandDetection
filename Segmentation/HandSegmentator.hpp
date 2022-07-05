@@ -38,6 +38,8 @@ public:
     HandSegmentator(const cv::Mat& roi);
    
     cv::Mat handSegmentation();
+	cv::Mat handSegmentationGrabCutMask(cv::Mat masksfg[], cv::Rect markers[], int size);
+	cv::Mat handSegmentationGrabCutRect(cv::Rect markers[], int size);
 };
 
 
