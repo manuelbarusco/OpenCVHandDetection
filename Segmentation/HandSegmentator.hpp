@@ -17,6 +17,8 @@ class HandSegmentator{
     cv::Mat inputRoi;
     cv::Mat edgeMap;
     cv::Mat preprocessedImage;
+	int numberHands;
+	std::vector<cv::Rect> rects;
     
     //internal methods for segmentation
     cv::Mat regionGrowing(const std::vector<std::pair<int, int>>& seedSet, unsigned char outputValue, float tolerance);
@@ -35,11 +37,11 @@ class HandSegmentator{
     void preprocessImage();
 public:
     //constructor
-    HandSegmentator(const cv::Mat& roi);
+    HandSegmentator(const cv::Mat& roi, const int nHands, std::vector<cv::Rect>);
    
     cv::Mat handSegmentation();
-	cv::Mat handSegmentationGrabCutMask(cv::Mat masksfg[], cv::Rect markers[], int size);
-	cv::Mat handSegmentationGrabCutRect(cv::Rect markers[], int size);
+	cv::Mat MiltiplehandSegmentationGrabCutRect();
+	cv::Mat MiltiplehandSegmentationGrabCutMask();
 };
 
 
