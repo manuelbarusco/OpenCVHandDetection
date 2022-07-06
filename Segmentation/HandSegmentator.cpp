@@ -178,7 +178,7 @@ void HandSegmentator::preprocessImage(){
     // PHASE 2: BILATERAL FILTER for blurring for noise and minor details reduction but still preserving edges
     
     //bilateral smoothing for image enhancement
-    bilateralFilter(inputRoi,preprocessedImage,10,20,100,BORDER_DEFAULT);
+    bilateralFilter(inputRoi,preprocessedImage,10,50,120,BORDER_DEFAULT);
     imshow("Blurred", preprocessedImage);
     waitKey();
     
@@ -203,17 +203,13 @@ void HandSegmentator::preprocessImage(){
       
     // Closing
      
-    morphologyEx(edge, edge,
+    morphologyEx(edgeMap, edgeMap,
                     MORPH_CLOSE, element,
                     Point(-1, -1), 2);
-      
-    // Displays the source and
-    // the closing image formed
-    imshow("Closing", edge);
-    waitKey();
-*/
-    
+    imshow("Edge connected", edgeMap);
+    waitKey();*/
 }
+
 
 /** regionGrowing
  @param seedSet vector of seed initial points
@@ -235,23 +231,52 @@ Mat HandSegmentator::regionGrowing(const vector<pair<int, int>>& seedSet, unsign
     imshow("Clust image", clust_img);
     waitKey();
     
-    /* PARTE PER ANALISI COLORE VICINO AL CENTRO
+    /* PARTE PER ANALISI COLORE VICINO AL CENTRO */
+    
+    //smart color navigation: se l'immagine è verticale, la mano è in verticale e quindi ci sarà
+    //molta possibilità di avere delle zone d'ombra, quindi ci spostiamo di più ai lati che
+    //rispetto a sopra/sotto
 
-    int x_center = clust_img1.cols / 2;
-    int y_center = clust_img1.rows / 2;
-    int r = 50;
+    int x_center = clust_img.cols / 2;
+    int y_center = clust_img.rows / 2;
+    int r_x;
+    int r_y;
     
-    set<Vec3b> main_colors;
+    //default search range for squared images
+    r_x = clust_img.cols / 30;
+    r_y = clust_img.rows / 30;
+    
+    //search ranges for vertical or horizontal images
+    double col_row_ratio = static_cast<double>(clust_img.cols) / clust_img.rows;
+    double row_col_ratio = static_cast<double>(clust_img.rows) / clust_img.cols;
+
+    if(col_row_ratio < 0.40){
+        r_x = clust_img.cols / 5;
+        r_y = clust_img.rows / 10;
+    } else if (row_col_ratio < 0.40){
+        r_x = clust_img.cols / 10;
+        r_y = clust_img.rows / 5;
+    }
+    
+    set<vector<unsigned char>> main_colors = set<vector<unsigned char>>(); //set of clustered colors near the window center
+    
     //analyze color clusters informations near the center
-    for(int i= y_center - r; i<y_center + r; i++){
-        for(int j= x_center - r; i<x_center + r; j++){
-            Vec3b color = clust_img1.at<Vec3b>(i,j);
-            if(main_colors.count(clust_img1.at<Vec3b>(i,j)) == 0)
-                main_colors.insert(clust_img1.at<Vec3b>(i,j));
+    for(int i= y_center - r_y; i<y_center + r_y; i++){
+        for(int j= x_center - r_x; j<x_center + r_x; j++){
+            //Vector color construction
+            vector<unsigned char> c = vector<unsigned char>(3);
+            c[0] = clust_img.at<Vec3b>(i,j)[0];
+            c[1] = clust_img.at<Vec3b>(i,j)[1];
+            c[2] = clust_img.at<Vec3b>(i,j)[2];
+            //cout << (int) c[0] << (int) c[1] << (int) c[2];
+            main_colors.insert(c);
         }
-    } */
+    }
     
-    Vec3b roiCenterCluster = clust_img.at<Vec3b>(inputRoi.rows/2, inputRoi.cols/2);
+    cout << main_colors.size();
+    
+    //DA USARE NEL CASO NON VADA CON INSIEME DI COLORI
+    //Vec3b roiCenterCluster = clust_img.at<Vec3b>(inputRoi.rows/2, inputRoi.cols/2);
     
     // boolean array/matrix of visited image pixels, same size as image
     // all the pixels are initialised to false
@@ -267,7 +292,6 @@ Mat HandSegmentator::regionGrowing(const vector<pair<int, int>>& seedSet, unsign
         
         int row = this_point.first;
         int col = this_point.second;
-        unsigned char pixel_value = grayscaleROI.at<unsigned char>(row,col);
                                                                         
         // Visit the point
         visited_matrix.at<unsigned char>(row, col) = outputValue;
@@ -283,10 +307,13 @@ Mat HandSegmentator::regionGrowing(const vector<pair<int, int>>& seedSet, unsign
                     // hozirontal index is valid
                     if (0 <= j && j < inputRoi.cols)
                     {
-                        unsigned char neighbour_value = grayscaleROI.at<unsigned char>(i,j);
                         unsigned char neighbour_visited = visited_matrix.at<unsigned char>(i, j);
+                        vector<unsigned char> pixel_clustered_color = vector<unsigned char>(3);
+                        pixel_clustered_color[0] = clust_img.at<Vec3b>(i,j)[0];
+                        pixel_clustered_color[1] = clust_img.at<Vec3b>(i,j)[1];
+                        pixel_clustered_color[2] = clust_img.at<Vec3b>(i,j)[2];
                         
-                        if (!neighbour_visited && clust_img.at<Vec3b>(i,j) == roiCenterCluster) { //pixel similarity
+                        if (!neighbour_visited && main_colors.count(pixel_clustered_color)) { //pixel similarity
                             //pixel simile, controlliamo se è un edge per indicare che non dobbiamo andare oltre a lui
                             if(edgeMap.at<unsigned char>(i, j) == 0)
                                 point_list.push_back(pair<int, int>(i, j));
@@ -299,7 +326,6 @@ Mat HandSegmentator::regionGrowing(const vector<pair<int, int>>& seedSet, unsign
 
     return visited_matrix;
 }
-
 
 cv::Mat HandSegmentator::MiltiplehandSegmentationGrabCutMask(){
 	//preprocessing full size img

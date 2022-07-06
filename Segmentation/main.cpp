@@ -4,7 +4,7 @@
 using namespace cv;
 using namespace std;
 
-int main(int argc, const char * argv[]) {
+int mainSimone(int argc, const char * argv[]) {
 	
 	//Full size image
 	Mat img = imread(argv[1]);
@@ -30,4 +30,19 @@ int main(int argc, const char * argv[]) {
 	
 	return 0;
 			
+}
+
+int mainManuel(){
+    Mat img = imread("6.png");
+    HandSegmentator hs = HandSegmentator(img);
+    Mat result = hs.handSegmentation();
+    imshow("Test GrabCut segmentation using mask", result);
+    waitKey();
+    
+    return 0;
+}
+
+int main(int argc, const char * argv[]) {
+    return mainManuel();
+    
 }
