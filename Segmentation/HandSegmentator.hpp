@@ -15,9 +15,10 @@ class HandSegmentator{
     private:
     //image to be segmented
     cv::Mat inputRoi;
+	cv::Mat fullImg;
     cv::Mat edgeMap;
     cv::Mat preprocessedImage;
-	int numberHands;
+	int numberHands,isFullimgSet = 0;
 	std::vector<cv::Rect> rects;
     
     //internal methods for segmentation
@@ -35,6 +36,8 @@ class HandSegmentator{
     cv:: Mat thresholdingYCrCb();
     
     void preprocessImage();
+	
+	cv::Mat setGrabCutFlag(cv::Mat maskPR, cv::Mat mask, int flagDefault, int flagTrue, int flagPR_True);
 public:
     //constructor
     HandSegmentator(const cv::Mat& roi, const int nHands, std::vector<cv::Rect>);

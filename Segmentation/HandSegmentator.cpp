@@ -328,96 +328,124 @@ Mat HandSegmentator::regionGrowing(const vector<pair<int, int>>& seedSet, unsign
     return visited_matrix;
 }
 
+/** setGrabCutFlag
+ @param maskPR binary mask where 255 represent probably foreground
+ @param mask binary mask where 255 represent for sure foreground pixels 
+ @param flagDefault Value to assing to the new mask where pixels are 0 in maskPR
+ @param flagTrue  Value to assing to the new mask where pixels are 255 in mask
+ @param flagPR_True  Value to assing to the new mask where pixels are 255 in mask PR and 0 in mask
+ */
+cv::Mat HandSegmentator::setGrabCutFlag(cv::Mat maskPR, cv::Mat mask, int flagDefault, int flagTrue, int flagPR_True){
+	if (maskPR.size() != mask.size()) {
+		cout<<"Error: different sizes"<<endl;
+	}
+	Mat out(maskPR.size(), CV_8U, Scalar(flagDefault));
+	for(int i = 0; i<maskPR.rows; i++){
+		for(int j = 0; j<maskPR.cols; j++){
+			if( mask.at<unsigned char>(i,j) == 255)
+				out.at<unsigned char>(i,j) = flagTrue; 	
+			else{
+				if (maskPR.at<unsigned char>(i,j) == 255 && mask.at<unsigned char>(i,j) == 0) {
+					out.at<unsigned char>(i,j) = flagPR_True;
+				}
+			}
+		}
+	}
+	return out;
+}
+
 cv::Mat HandSegmentator::MiltiplehandSegmentationGrabCutMask(){
-    //preprocessing full size img
-    //bilateralFilter(inputRoi,inputRoi,10,20,100,BORDER_DEFAULT);
-    
-    Mat out(inputRoi.size(), inputRoi.type(),Scalar(0,0,0));
-    vector<Mat> croppedMasks;
-    Mat bwBig(inputRoi.size(), CV_8UC1,Scalar(GC_PR_BGD)), bwSmall;
-    int iterations = 5;
-    
-    cout<<"Number of hand on this image: "<<numberHands<<endl;
-    
-    //Single hand segmentation
-    //Create vector of images cropped in ROI
-    for(int i = 0; i<numberHands; i++){
-        //Crop the image using rectangle
-        Mat handCropped;
-        handCropped = inputRoi(rects[i]);
-        imshow("croppedImg", handCropped);
-        waitKey(0);
-        
-        //Segmentation on cropped image
-        cvtColor(handCropped, bwSmall, COLOR_BGR2GRAY);
-        threshold(bwSmall, bwSmall, 40, 255, THRESH_BINARY | THRESH_OTSU);
-        imshow("Binary Image", bwSmall);
-        waitKey();
-        
-        //Superimpose smaller hand mask in a mask of size equal to the original image
-        bwSmall.copyTo(bwBig(cv::Rect(rects[i].tl().x,rects[i].tl().y,bwSmall.cols, bwSmall.rows)));
-        
-        //Set GrabCut's flags
-        for(int i = 0; i<bwBig.rows; i++){
-            for(int j = 0; j<bwBig.cols; j++){
-                if(bwBig.at<unsigned char>(i,j) == 255)
-                    bwBig.at<unsigned char>(i,j) = GC_PR_FGD;     //Foreground
-                else
-                    bwBig.at<unsigned char>(i,j) = GC_PR_BGD;    //Background
-            }
-        }
-        //applay GrabCut alg.
-        Mat bgd,fgd;
-        grabCut(inputRoi,bwBig,Rect(),bgd,fgd,iterations,GC_INIT_WITH_MASK);
-        
-        //TEst
-        //        Mat handImg = hand.clone();
-        //        for(int i = 0; i<handImg.rows; i++){
-        //            for(int j = 0; j<handImg.cols; j++){
-        //                if(handImg.at<unsigned char>(i,j) == GC_FGD)
-        //                    handImg.at<unsigned char>(i,j) = 255;     //Foreground
-        //                else if (handImg.at<unsigned char>(i,j) == GC_BGD){
-        //                    handImg.at<unsigned char>(i,j) = 0;    //Background
-        //                }
-        //                else{
-        //                    if (handImg.at<unsigned char>(i,j) == GC_PR_BGD) {
-        //                        handImg.at<unsigned char>(i,j) = 50;
-        //                    }
-        //                    else
-        //                        handImg.at<unsigned char>(i,j) = 100;
-        //                }
-        //
-        //            }
-        //        }
-        //        imshow("Hand riconverted after grabcut", handImg);
-        //        waitKey();
-        
-        compare(bwBig, GC_PR_FGD, bwBig, CMP_EQ);            // CMP_EQ -> src1 is equal to src2. GC_PR_FGD -> Likely a foreground pixel
-        inputRoi.copyTo(out,bwBig);
-        string t = "Temp out of hand number " + std::to_string(i);
-        imshow(t, out);
-        waitKey();
-        destroyAllWindows();
-    }
-            
-    return out;
+	if (!isFullimgSet){
+		fullImg = inputRoi.clone();
+		isFullimgSet = 1;
+	}
+	
+	Mat out(fullImg.size(), fullImg.type(),Scalar(0,0,0));
+	vector<Mat> croppedMasks;
+	int iterations = 5;
+	
+	cout<<"Number of hand on this image: "<<numberHands<<endl;
+	
+	//Single hand segmentation
+	//Create vector of images cropped in ROI
+	for(int i = 0; i<numberHands; i++){
+		Mat bwBig(fullImg.size(), CV_8UC1,Scalar(GC_BGD));
+		//Crop the image using rectangle
+		Mat handCropped;
+		handCropped = fullImg(rects[i]);
+		imshow("croppedImg", handCropped);
+		waitKey(0);
+		
+		//Segmentation on cropped image
+		Mat bwSmall(handCropped.size(),CV_8UC1, Scalar(0));
+		inputRoi = handCropped.clone();
+		bwSmall = handSegmentation();
+		
+		//Morphological dilation for creating larger mask for specifing PR_FGD pixels
+		Mat bwS_PR_FGD;
+		Mat element = cv::getStructuringElement( cv::MORPH_ELLIPSE, cv::Size(3, 3) );
+		int opIterations  = 4;
+		morphologyEx( bwSmall, bwS_PR_FGD, MORPH_DILATE, element, Point(-1,-1), opIterations ); 
+		imshow("Binary Image after dilation", bwS_PR_FGD);
+		waitKey();
+		
+		Mat bwCombined = setGrabCutFlag(bwS_PR_FGD, bwSmall, GC_PR_BGD, GC_FGD, GC_PR_FGD);
+//		imshow("Binary Image combined", bwCombined);
+//		waitKey();
+		
+		//Superimpose smaller hand mask in a mask of size equal to the original image
+		bwCombined.copyTo(bwBig(cv::Rect(rects[i].tl().x,rects[i].tl().y,bwCombined.cols, bwCombined.rows)));
+//		imshow("Binary Image combined full size", bwBig);
+//		waitKey();
+		
+		//applay GrabCut alg.
+		Mat bgd,fgd;
+		grabCut(fullImg,bwBig,Rect(),bgd,fgd,iterations,GC_INIT_WITH_MASK);
+		//Modify all pixels with GC_PR_FGD to GC_FGD for doing one compare
+		for (int i = 0; i<bwBig.rows; i++) {
+			for (int j = 0; j<bwBig.cols; j++) {
+				if(bwBig.at<unsigned char>(i,j) == GC_PR_FGD){
+					bwBig.at<unsigned char>(i,j) = GC_FGD;
+				}
+			}
+		}
+		compare(bwBig, GC_FGD, bwBig, CMP_EQ);			// CMP_EQ -> src1 is equal to src2
+		fullImg.copyTo(out,bwBig);
+//		string t = "Temp out of hand number " + std::to_string(i);
+//		imshow(t, out);
+//		waitKey();
+		destroyAllWindows();
+	}
+			
+	return out;
 }
 
 cv::Mat HandSegmentator::MiltiplehandSegmentationGrabCutRect(){
     Mat out(inputRoi.size(), inputRoi.type(),Scalar(0,0,0));
     int iterations = 5;
-    //preprocessing full size img
-    //bilateralFilter(inputRoi,inputRoi,10,20,100,BORDER_DEFAULT);
+	if (!isFullimgSet){
+		fullImg = inputRoi.clone();
+		isFullimgSet = 1;
+	}
     
     for (int i = 0; i < numberHands; i++){
         Mat bgd, fgd, hand;
         
-        grabCut(inputRoi,hand,rects[i],bgd,fgd,iterations,GC_INIT_WITH_RECT);
-        compare(hand, GC_PR_FGD, hand, CMP_EQ);            // CMP_EQ -> src1 is equal to src2. GC_PR_FGD -> Likely a foreground pixel
-        inputRoi.copyTo(out,hand);
-        string t = "Temp out of hand number " + std::to_string(i);
-        imshow(t, out);
-        waitKey();
+        grabCut(fullImg,hand,rects[i],bgd,fgd,iterations,GC_INIT_WITH_RECT);
+		
+		//Modify all pixels with GC_PR_FGD to GC_FGD for doing one compare
+		for (int i = 0; i<hand.rows; i++) {
+			for (int j = 0; j<hand.cols; j++) {
+				if(hand.at<unsigned char>(i,j) == GC_PR_FGD){
+					hand.at<unsigned char>(i,j) = GC_FGD;
+				}
+			}
+		}
+        compare(hand, GC_FGD, hand, CMP_EQ);            // CMP_EQ -> src1 is equal to src2. GC_PR_FGD -> Likely a foreground pixel
+		fullImg.copyTo(out,hand);
+//        string t = "Temp out (Rect) of hand number " + std::to_string(i);
+//        imshow(t, out);
+//        waitKey();
         destroyAllWindows();
       }
     
