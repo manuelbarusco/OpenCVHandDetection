@@ -41,55 +41,55 @@ Evaluator::Evaluator(string gtd, string of){
  */
 void Evaluator::intersectionOverUnion(string imgFileName, vector<cv::Rect> detections){
     string imgName = imgFileName.substr(0, imgFileName.find("."));
+    cout << groundTruthDirectory+"/det/"+imgName+".txt";
     ifstream gtf (groundTruthDirectory+"/det/"+imgName+".txt");
-    
+
     //check for the file
     if(!gtf.is_open()){
         gtf.close();
         throw FileDoesNotExist();
     }
-    
+
     //construct ground truth bounding boxes
-    vector<cv::Rect> gtBB = vector<cv::Rect>(); 
+    vector<cv::Rect> gtBB = vector<cv::Rect>();
     string line;
     bool first = true;
     while(getline(gtf,line)){
         stringstream ss(line);
-        
+
         int x,y,h,w;
-        
+
         ss >> x;
         ss >> y;
         ss >> w;
         ss >> h;
-        
+
         //check for empty file
         if(x==EOF && first)
             throw EmptyFile();
-        
+
         //check for invalid files
         if(x == EOF || y == EOF || w == EOF || h == EOF )
             throw InvalidFile();
-        
+
         cv::Rect r= cv::Rect(x,y,w,h);
         gtBB.push_back(r);
         if(first)
             first = false;
     }
-    
+
     //calculate intersection over union
     for(int i = 0; i < detections.size(); i++){
-        
+
         //for every detection calculate the intesection over union between the detection box and every ground truth box
         vector<double> iousLocal = vector<double>();
         for(int j = 0; j < gtBB.size(); j++){
             double iou = singleIntersectionOverUnion(detections[i], gtBB[j]);
             iousLocal.push_back(iou);
         }
-        
+
         //pick the best intersection over union, it will be that correlate to the right detection box - ground truth box couple
         double iou = *max_element(iousLocal.begin(), iousLocal.end());
-        
         //print in the output file the IoU
         outputFile << "Image: " << imgFileName <<
                       "Bounding Box: Coordinates Top Left Pixel: (" << detections[i].tl().x << "," << detections[i].tl().y << ")" <<
@@ -97,7 +97,7 @@ void Evaluator::intersectionOverUnion(string imgFileName, vector<cv::Rect> detec
                       ", Width: " << detections[i].width <<
                         ", IoU: " << iou << "\n";
     }
-    
+
     //close the input file
     gtf.close();
 }
@@ -108,6 +108,12 @@ void Evaluator::intersectionOverUnion(string imgFileName, vector<cv::Rect> detec
  @return intersection over union of det and bb rectangles
  */
 double Evaluator::singleIntersectionOverUnion(const cv::Rect &det, const cv::Rect &bb){
-    //TODO: codice per il calcolo della metrica
+    cv::Rect intersection = det & bb;
+    return static_cast<double>(intersection.area()) / (det.area() + bb.area() - intersection.area());
 }
 
+/** destroyer: free all the evaluator resources
+ */
+Evaluator::~Evaluator(){
+    outputFile.close();
+}
