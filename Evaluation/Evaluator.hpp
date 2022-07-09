@@ -1,6 +1,6 @@
 //Evaluator.hpp
 
-//@author: Manuel Barusco
+//@author: Manuel Barusco, Riccardo Rampon
 
 #ifndef Evaluator_hpp
 #define Evaluator_hpp
@@ -23,7 +23,7 @@ class Evaluator{
 
         double singleIntersectionOverUnion(const cv::Rect& det, const cv::Rect& bb);
 
-        void pixelAccuracy(const cv::Mat imgGT, const cv::Mat maskSegm);
+        void pixelAccuracy(std::string imgFileName, const cv::Mat imgGT, const cv::Mat maskSegm);
 
         //destroyer
         ~Evaluator();

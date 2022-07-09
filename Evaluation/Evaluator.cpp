@@ -1,6 +1,6 @@
 //Evaluator.cpp
 
-//@author: Manuel Barusco
+//@author: Manuel Barusco, Riccardo Rampon
 
 #include "Evaluator.hpp"
 #include <fstream>
@@ -111,6 +111,55 @@ double Evaluator::singleIntersectionOverUnion(const cv::Rect &det, const cv::Rec
     cv::Rect intersection = det & bb;
     return static_cast<double>(intersection.area()) / (det.area() + bb.area() - intersection.area());
 }
+
+void Evaluator::pixelAccuracy(std::string imgFileName, const cv::Mat imgGT, const cv::Mat maskSegm){
+
+    string imgName = imgFileName.substr(0, imgFileName.find("."));
+    ifstream gtf(groundTruthDirectory + "/det/" + imgName + ".txt");
+
+
+    int hand_tp = 0; int hand_fp = 0; int hand_tn = 0; int hand_fn = 0;
+    //int no_hand_tp = 0; int no_hand_fp = 0; int no_hand_tn = 0; int no_hand_fn = 0;
+
+    unsigned char mask_intensity, maskGT_intensity = 0;
+    float hand_pixel_accuracy = 0;
+    float no_hand_pixel_accuracy = 0;
+
+    if (imgGT.channels() != 1) cvtColor(imgGT, imgGT, COLOR_BGR2GRAY);
+    if (maskSegm.channels() != 1) cvtColor(maskSegm, maskSegm, COLOR_BGR2GRAY);
+
+    for (int i = 0; i < maskSegm.rows; i++) {
+        for (int j = 0; j < maskSegm.cols; j++) {
+            mask_intensity = maskSegm.at<unsigned char>(i, j);
+            maskGT_intensity = imgGT.at<unsigned char>(i, j);
+
+            if (maskGT_intensity == 255) { //imgGT(i,j) -> white -> hand
+                if (mask_intensity == 255)
+                    hand_tp++; //tutti e due white
+                else
+                    hand_fn++; //gt è white quello predetto è black
+            }
+            else { //imgGT(i,j) -> black
+                if (mask_intensity == 0)
+                    hand_tn++; // tutti e due black
+                else
+                    hand_fn++; //gt è black e predetto è white
+            }//if-else
+        }//for
+    }//for
+
+    hand_pixel_accuracy = static_cast<float>(hand_tp / (hand_tp + hand_fn));
+    no_hand_pixel_accuracy = static_cast<float>(hand_tn / (hand_tn + hand_fp));
+
+    //print in the output file the IoU
+    outputFile << "Image: " << imgFileName <<
+        "Pixel Accuracy (Hand): " << hand_pixel_accuracy << "\n" <<
+        "Pixel Accuracy (No Hand): " << no_hand_pixel_accuracy << "\n";
+
+    //close the input file
+    gtf.close();
+
+}//pixelAccuracy
 
 /** destroyer: free all the evaluator resources
  */
