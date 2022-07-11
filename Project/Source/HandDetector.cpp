@@ -2,7 +2,7 @@
 
 //Author: Riccardo Rampon
 
-#include "../Include/HandDetector.hpp"
+#include "HandDetector.h"
 #include <opencv2/opencv.hpp>
 #include <iostream>
 #include <fstream>
@@ -12,15 +12,12 @@ using namespace cv;
 using namespace cv::dnn;
 using namespace std;
 
-/** Constructor
-@param img input image to the detector
-@param path_file path to the output file
-*/
-HandDetector::HandDetector(const Mat& img, const string path_file) {
+/** Constructor */
+HandDetector::HandDetector(const Mat& img, const string& path_file, Net& p_net) {
 	image = img.clone();
 	//outF(path_file, ios::out);
 	outF = ofstream(path_file, ios::out);
-
+	net = p_net;
 }//HandDetector
 
 /* forward_process()
@@ -29,11 +26,11 @@ HandDetector::HandDetector(const Mat& img, const string path_file) {
 * @param classes vector of classes
 * @return image post-processed
 */
-vector<Mat> HandDetector::forward_process(Net& net){
+vector<Mat> HandDetector::forward_process(){
 	Mat blob;
 	blobFromImage(image, blob, 1 / 255.0, Size(INPUT_WIDTH, INPUT_HEIGHT), Scalar(0, 0, 0), true, false);
 	net.setInput(blob);
-
+	
 	//forward step
 	vector<Mat> outputs;
 	net.forward(outputs, getOutputLayersNames(net));
@@ -47,7 +44,7 @@ vector<Mat> HandDetector::forward_process(Net& net){
 * @param classes vector of classes
 * @return image post-processed
 */
-vector<Mat> HandDetector::post_process(vector<Mat>& outs, vector<String>& classes){
+vector<Rect> HandDetector::post_process(vector<Mat>& outs, vector<String>& classes){
 	vector<Mat> out_images;
 	vector<int> classIDs;
 	vector<float> confidences;
@@ -62,17 +59,17 @@ vector<Mat> HandDetector::post_process(vector<Mat>& outs, vector<String>& classe
 
 		// Search the highest score prediction returned by the network
 		for (int j = 0; j < numDetections; ++j, detection += outs[i].cols){
-
+			
 			// all scores found
 			Mat scores = outs[i].row(j).colRange(5, outs[i].cols);
-
+	
 			Point classIdPoint;
 			double confidence;
 
 			// Get the value and point location of the maximum score
 			minMaxLoc(scores, 0, &confidence, 0, &classIdPoint);
 
-			// Consider only prediction that have confidence >= threshold
+			// Consider only prediction that have confidence >= threshold 
 			if (confidence > CONFIDENCE_THRESHOLD) {
 
 				// Compute all parameter needed to perform boxes' creation
@@ -94,23 +91,22 @@ vector<Mat> HandDetector::post_process(vector<Mat>& outs, vector<String>& classe
 	// Non-Maxima-Suppression used to eliminate all redundant and overlapping boxes that have low confidence
 	vector<int> indices; // Indices of bboxes
 	NMSBoxes(boxes, confidences, CONFIDENCE_THRESHOLD, NMS_THRESHOLD, indices);
-
+	vector<Rect> out_boxes;
 	// Draw box
 	for (int i = 0; i < indices.size(); i++) {
-
+		
 		int ind = indices[i];
 		Rect bbox = boxes[ind];
-
+		out_boxes.push_back(boxes[ind]);
 		//Mat roi = getROI(bbox);
 		//out_images.push_back(roi);
 
 		draw_box_prediction(classes, classIDs[ind], confidences[ind], bbox.x, bbox.y, bbox.x+bbox.width, bbox.y+bbox.height); // draw box
 		//printf("X:%d, Y:%d, W:%d, H:%d\n\n", bbox.x, bbox.y, bbox.width, bbox.height);
-		if(!outF)
-			create_detection_file(bbox.x, bbox.y, bbox.width, bbox.height);
+		create_detection_file(bbox.x, bbox.y, bbox.width, bbox.height);
 	}//for
 
-	return out_images;
+	return out_boxes;
 }//forward_process
 
 /* draw_box_prediction()
@@ -127,7 +123,7 @@ vector<Mat> HandDetector::post_process(vector<Mat>& outs, vector<String>& classe
 void HandDetector::draw_box_prediction(vector<String>& classes, int classId, float confidence, int X_top, int Y_top, int X_bottom, int Y_bottom){
 	// Create the box
 	rectangle(image, Point(X_top, Y_top), Point(X_bottom, Y_bottom), COLOR, 2);
-
+	
 	// Create label and put label + classId
 	string label = format("%.f", confidence);
 	label = classes[classId] + ":" + label;
@@ -164,7 +160,7 @@ cv::Mat HandDetector::getROI(Rect& roi){
 * @param X_top x-coordinate of the box
 * @param Y_top y-coordinate of the box
 * @param width width of the box
-* @param height height of the box
+* @param height height of the box 
 */
 void HandDetector::create_detection_file(int X_top, int Y_top, int width, int height){
 	if (outF.is_open()){
