@@ -1,8 +1,8 @@
 //HandDetector.cpp
 
-//Author: Riccardo Rampon
+//@author: Riccardo Rampon
 
-#include "HandDetector.h"
+#include "../Include/HandDetector.hpp"
 #include <opencv2/opencv.hpp>
 #include <iostream>
 #include <fstream>
@@ -12,25 +12,25 @@ using namespace cv;
 using namespace cv::dnn;
 using namespace std;
 
-/** Constructor */
-HandDetector::HandDetector(const Mat& img, const string& path_file, Net& p_net) {
-	image = img.clone();
-	//outF(path_file, ios::out);
-	outF = ofstream(path_file, ios::out);
+/** Constructor
+@param p_net network object for the hand detection
+@param c_names vector of string class names
+*/
+HandDetector::HandDetector(const Net& p_net, const vector<string>& c_names) {
 	net = p_net;
+	class_names = c_names;
 }//HandDetector
 
 /* forward_process()
 * This function will perform the forward-step for the neural netowrk
-* @param outs output of the network
-* @param classes vector of classes
-* @return image post-processed
+* @param imgInput input image to the forward process
+* @return vector of images after forward process
 */
-vector<Mat> HandDetector::forward_process(){
+vector<Mat> HandDetector::forward_process(const Mat& imgInput){
 	Mat blob;
-	blobFromImage(image, blob, 1 / 255.0, Size(INPUT_WIDTH, INPUT_HEIGHT), Scalar(0, 0, 0), true, false);
+	blobFromImage(imgInput, blob, 1 / 255.0, Size(INPUT_WIDTH, INPUT_HEIGHT), Scalar(0, 0, 0), true, false);
 	net.setInput(blob);
-	
+
 	//forward step
 	vector<Mat> outputs;
 	net.forward(outputs, getOutputLayersNames(net));
@@ -39,37 +39,35 @@ vector<Mat> HandDetector::forward_process(){
 }//forward_process
 
 /* post_process()
-* This function will find possible prediction and keep only the best one
-* @param outs outputs of the network
-* @param classes vector of classes
-* @return image post-processed
+* This function will find possible prediction and keep only the best ones
+* @param imgInput input image
+* @param outputs outputs of the network after the forward process
+* @return vector of pair<Rect,color> where Rect is the bounding box and color is the bounding box color
 */
-vector<Rect> HandDetector::post_process(vector<Mat>& outs, vector<String>& classes){
-	vector<Mat> out_images;
+vector<pair<Rect,Scalar>> HandDetector::post_process(Mat& image, vector<Mat>& outputs){
 	vector<int> classIDs;
 	vector<float> confidences;
 	vector<Rect> boxes;
 
-	out_images.push_back(image);
 
-	for (int i = 0; i < outs.size(); i++) {
+	for (int i = 0; i < outputs.size(); i++) {
 
-		float* detection = (float*)outs[i].data;
-		int numDetections = outs[i].rows; // number of detections
+		float* detection = (float*)outputs[i].data;
+		int numDetections = outputs[i].rows; // number of detections
 
 		// Search the highest score prediction returned by the network
-		for (int j = 0; j < numDetections; ++j, detection += outs[i].cols){
-			
+		for (int j = 0; j < numDetections; ++j, detection += outputs[i].cols){
+
 			// all scores found
-			Mat scores = outs[i].row(j).colRange(5, outs[i].cols);
-	
+			Mat scores = outputs[i].row(j).colRange(5, outputs[i].cols);
+
 			Point classIdPoint;
 			double confidence;
 
 			// Get the value and point location of the maximum score
 			minMaxLoc(scores, 0, &confidence, 0, &classIdPoint);
 
-			// Consider only prediction that have confidence >= threshold 
+			// Consider only prediction that have confidence >= threshold
 			if (confidence > CONFIDENCE_THRESHOLD) {
 
 				// Compute all parameter needed to perform boxes' creation
@@ -89,30 +87,27 @@ vector<Rect> HandDetector::post_process(vector<Mat>& outs, vector<String>& class
 	}//for
 
 	// Non-Maxima-Suppression used to eliminate all redundant and overlapping boxes that have low confidence
-	vector<int> indices; // Indices of bboxes
+	vector<int> indices; // Indices of boxes
 	NMSBoxes(boxes, confidences, CONFIDENCE_THRESHOLD, NMS_THRESHOLD, indices);
-	vector<Rect> out_boxes;
+	vector<pair<Rect,Scalar>> out_boxes;
+	RNG rng = RNG(26414432);
 	// Draw box
 	for (int i = 0; i < indices.size(); i++) {
-		
 		int ind = indices[i];
 		Rect bbox = boxes[ind];
-		out_boxes.push_back(boxes[ind]);
-		//Mat roi = getROI(bbox);
-		//out_images.push_back(roi);
-
-		draw_box_prediction(classes, classIDs[ind], confidences[ind], bbox.x, bbox.y, bbox.x+bbox.width, bbox.y+bbox.height); // draw box
-		//printf("X:%d, Y:%d, W:%d, H:%d\n\n", bbox.x, bbox.y, bbox.width, bbox.height);
+		Scalar color = Scalar(rng.uniform(0,255), rng.uniform(0, 255), rng.uniform(0, 255));
+		out_boxes.push_back(pair<Rect,Scalar>(boxes[ind],color));
+		draw_box_prediction(image, color, classIDs[ind], confidences[ind], bbox.x, bbox.y, bbox.x+bbox.width, bbox.y+bbox.height); // draw box
 		create_detection_file(bbox.x, bbox.y, bbox.width, bbox.height);
 	}//for
 
 	return out_boxes;
-}//forward_process
+}//post_process
 
 /* draw_box_prediction()
 * This function will create the box on the image and the label associated
 * @param image image on which to create the box
-* @param classes vector of classes
+* @param color bounding box color
 * @param classId class id prediction
 * @param confidence confidence value of the prediction
 * @param X_top x-coordinate of top-left point
@@ -120,14 +115,13 @@ vector<Rect> HandDetector::post_process(vector<Mat>& outs, vector<String>& class
 * @param X_bottom x-coordinate of bottom-right point
 * @param Y_bottom y-coordinate of bottom-right point
 */
-void HandDetector::draw_box_prediction(vector<String>& classes, int classId, float confidence, int X_top, int Y_top, int X_bottom, int Y_bottom){
+void HandDetector::draw_box_prediction(Mat& image, const Scalar& color, int classId, float confidence, int X_top, int Y_top, int X_bottom, int Y_bottom){
 	// Create the box
-	rectangle(image, Point(X_top, Y_top), Point(X_bottom, Y_bottom), COLOR, 2);
-	
+	rectangle(image, Point(X_top, Y_top), Point(X_bottom, Y_bottom), color, 2);
 	// Create label and put label + classId
 	string label = format("%.f", confidence);
-	label = classes[classId] + ":" + label;
-	putText(image, label, Point(X_top, Y_top-10), FONT_TYPE, FONT_SCALE, COLOR, FONT_THICKNESS);
+	label = class_names[classId] + ":" + label;
+	putText(image, label, Point(X_top, Y_top-10), FONT_TYPE, FONT_SCALE, color, FONT_THICKNESS);
 
 }//draw_box_prediction
 
@@ -148,19 +142,12 @@ vector<String> HandDetector::getOutputLayersNames(const Net& net){
 }//getOutputLayersNames
 
 
-cv::Mat HandDetector::getROI(Rect& roi){
-	//imshow("roi", image(roi));
-	//waitKey();
-	return image(roi);
-}//getROI
-
-
 /* create_detection_file
 * This function will create a file that contains the coordinates needed to identify the boxes and to perform after the evaluation
 * @param X_top x-coordinate of the box
 * @param Y_top y-coordinate of the box
 * @param width width of the box
-* @param height height of the box 
+* @param height height of the box
 */
 void HandDetector::create_detection_file(int X_top, int Y_top, int width, int height){
 	if (outF.is_open()){
@@ -168,16 +155,3 @@ void HandDetector::create_detection_file(int X_top, int Y_top, int width, int he
 	}//if
 	//outF.close();
 }//create_detection_file
-
-/** show_image()
-* This function will display the images
-*/
-void HandDetector::show_images(const vector<Mat>& imgs) {
-	imshow("Image", imgs[0]);
-	for (int i = 1; i < imgs.size(); i++) {
-		String windName = "Roi";
-		windName.append(to_string(i));
-		imshow(windName, imgs[i]);
-	}//for
-	waitKey();
-}//show_image

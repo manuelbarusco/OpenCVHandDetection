@@ -23,9 +23,6 @@ int mainDetector(){
   	//path_file.push_back(to_string(i)) //per altri file: uno per ogni immagine
   	path_file.append(".txt");
 
-
-  	HandDetector hd = HandDetector(img, path_file);
-
   	// Configuration & Weights path
   	String cfg_path = "../Models/yolov3_training.cfg";
   	String weights_path = "../Models/yolov3_training_last_v7.weights";
@@ -46,11 +43,13 @@ int mainDetector(){
   		fin.close();
   	}//if
 
-  	vector<Mat> outs = hd.forward_process(net);
+    HandDetector hd = HandDetector(net, classes);
+  	vector<Mat> outs = hd.forward_process(img);
 
-  	vector<Mat> out_imgs = hd.post_process(outs, classes);
+  	//vector<Rect> out_imgs = hd.post_process(img, outs);
 
-  	hd.show_images(out_imgs);
+  	imshow("Detection", img);
+    waitKey();
 
   	return 0;
 }
@@ -86,9 +85,9 @@ int mainSegmentation(int argc, const char * argv[]) {
     waitKey();
 
     //GrabCut using Rect
-    result = hs.MiltiplehandSegmentationGrabCutRect();
-    imshow("Test GrabCut segmentation using Rect", result);
-    waitKey();
+    //result = hs.MiltiplehandSegmentationGrabCutRect();
+    //imshow("Test GrabCut segmentation using Rect", result);
+    //waitKey();
 
     return 0;
 
@@ -98,40 +97,41 @@ int mainSegmentation(int argc, const char * argv[]) {
 @param directory images directory path
 */
 void runDetector(const string& pathFolder){
-    /*vector<string> imgs;
+    vector<string> imgs;
     glob(pathFolder, imgs, false);
+    // Configuration & Weights path
+    String cfg_path = "../Models/yolov3_training.cfg";
+    String weights_path = "../Models/yolov3_training_last_v7.weights";
+
+    // Neural Network model
+    Net net = readNetFromDarknet(cfg_path, weights_path);
+    net.setPreferableBackend(DNN_BACKEND_OPENCV);
+    net.setPreferableTarget(DNN_TARGET_CPU);
+
+    // Load name of class
+    string classesFile = "../Models/coco2.names";
+    vector<string> classes;
+    ifstream fin (classesFile.c_str());
+    if (fin.is_open()) {
+      string line;
+      while (getline(fin, line)) classes.push_back(line);
+      //cout << line << endl;
+      fin.close();
+    }//if
+
+    HandDetector hd = HandDetector(net, classes);
 
     for(int i = 0; i < imgs.size(); i++){
-      Mat img = imread(pathFolder+"/"+imgs[i]);
+      Mat img = imread(imgs[i]);
 
-      HandDetector hd = HandDetector(img,);
+      vector<Mat> outs = hd.forward_process(img);
 
-      // Configuration & Weights path
-      String cfg_path = "../Models/yolov3_training.cfg";
-      String weights_path = "../Models/yolov3_training_last_v7.weights";
+    	vector<pair<Rect,Scalar>> outDetections = hd.post_process(img, outs);
 
-      // Neural Network model
-      Net net = readNetFromDarknet(cfg_path, weights_path);
-      net.setPreferableBackend(DNN_BACKEND_OPENCV);
-      net.setPreferableTarget(DNN_TARGET_CPU);
-
-      // Load name of class
-      string classesFile = "../Models/coco2.names";
-      vector<string> classes;
-      ifstream fin (classesFile.c_str());
-      if (fin.is_open()) {
-        string line;
-        while (getline(fin, line)) classes.push_back(line);
-        //cout << line << endl;
-        fin.close();
-      }//if
-
-      vector<Mat> outs = hd.forward_process(net);
-
-      vector<Mat> out_imgs = hd.post_process(outs, classes);
-
-      hd.show_images(out_imgs);
-    }*/
+      cout << outDetections.size();
+      imshow("Detection", img);
+      waitKey();
+    }
 }
 
 int userMain(){
@@ -153,7 +153,7 @@ int userMain(){
     cin >> mode;
 
     if(mode.compare("d") == 0){
-        mainDetector();
+        runDetector(path);
     } else if (mode.compare("ds") == 0){
        // execuet segmentation
     } else if (mode.compare("de") == 0){

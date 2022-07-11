@@ -13,38 +13,36 @@
 
 class HandSegmentator{
     private:
-    //image to be segmented
-    cv::Mat inputRoi;
-	cv::Mat fullImg;
-    cv::Mat edgeMap;
-    cv::Mat preprocessedImage;
-	int numberHands,isFullimgSet = 0;
-	std::vector<cv::Rect> rects;
+      cv::Mat inputImg;
+      cv::Mat roi;                             //singe hand RoI
+      cv::Mat edgeMap;                         //edgeMap of the input image
+      cv::Mat preprocessedImage;               //processed image for image segmentation
+  	  int numberHands,isFullimgSet = 0;
+  	  std::vector<cv::Rect> rects;             //hand detections in the input image
 
-    //internal methods for segmentation
-    cv::Mat regionGrowing(const std::vector<std::pair<int, int>>& seedSet, unsigned char outputValue, float tolerance);
+      //method for input image preprocessing before segmentation
 
+      void preprocessImage();
 
-    cv::Mat kmeans(int k, int att, cv::Mat& centers);
+      //internal methods for hand segmentation
 
-    cv::Mat thresholdingYCrCb(cv::Mat &img);
+      cv::Mat advancedRegionGrowing(const std::vector<std::pair<int, int>>& seedSet, unsigned char outputValue);
 
-    void minMaxNormalization(cv::Mat& img, float weightX, float weightY, bool treeChannels);
+      void minMaxNormalization(cv::Mat& img, float weightX, float weightY, bool treeChannels);
 
-    cv::Mat kmeansSegmentationPositionQuantization(int K, float weighX,float weightY);
+      cv::Mat kmeansSegmentationPositionQuantization(int K, float weighX,float weightY);
 
-    cv:: Mat thresholdingYCrCb();
+      cv:: Mat thresholdingYCrCb();
 
-    void preprocessImage();
+  	  cv::Mat setGrabCutFlag(cv::Mat maskPR, cv::Mat mask, int flagDefault, int flagTrue, int flagPR_True);
 
-	cv::Mat setGrabCutFlag(cv::Mat maskPR, cv::Mat mask, int flagDefault, int flagTrue, int flagPR_True);
-public:
-    //constructor
-    HandSegmentator(const cv::Mat& roi, const int nHands, std::vector<cv::Rect>);
+      cv::Mat handSegmentationWithARG();
+    public:
+      //constructor
+      HandSegmentator(const cv::Mat& iImg, const int nHands, std::vector<cv::Rect>);
 
-    cv::Mat handSegmentation();
-    cv::Mat MiltiplehandSegmentationGrabCutRect();
-    cv::Mat MiltiplehandSegmentationGrabCutMask();
+      cv::Mat MiltiplehandSegmentationGrabCutRect();
+      cv::Mat MiltiplehandSegmentationGrabCutMask();
 };
 
 

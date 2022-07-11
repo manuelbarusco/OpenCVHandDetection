@@ -13,8 +13,10 @@
 class HandDetector {
 	private:
 
-		cv::Mat image;
+		cv::dnn::Net net;
+		std::vector<std::string> class_names;
 		std::ofstream outF;
+
 
 		const float INPUT_WIDTH = 416.0;
 		const float INPUT_HEIGHT = 416.0;
@@ -25,22 +27,19 @@ class HandDetector {
 		const int  FONT_TYPE = cv::FONT_HERSHEY_SIMPLEX;
 		const int FONT_THICKNESS = 2;
 
-		cv::Scalar COLOR = cv::Scalar(0,0,255);
-
 	public:
-		HandDetector(const cv::Mat& img, const std::string path_file);
 
-		void show_images(const std::vector<cv::Mat>& images);
-		std::vector<cv::Mat> forward_process(cv::dnn::Net& net);
+		HandDetector(const cv::dnn::Net& net, const std::vector<std::string>& class_names);
 
-		std::vector<cv::Mat> post_process(std::vector<cv::Mat>& outputs, std::vector<std::string>& class_name);
-		void create_detection_file(int X_top, int Y_top, int width, int height);
+		std::vector<cv::Mat> forward_process(const cv::Mat& imgInput);
 
-		void draw_box_prediction(std::vector<std::string>& class_name, int classId, float confidence, int left, int top, int right, int bottom);
+		std::vector<std::pair<cv::Rect,cv::Scalar>> post_process(cv::Mat& image, std::vector<cv::Mat>& outputs);
+
+		void draw_box_prediction(cv::Mat& image, const cv::Scalar& color, int classId, float confidence, int X_top, int Y_top, int X_bottom, int Y_bottom);
+
 		std::vector<std::string> getOutputLayersNames(const cv::dnn::Net& net);
 
-		cv::Mat getROI(cv::Rect& roi);
-
+		void create_detection_file(int X_top, int Y_top, int width, int height);
 };
 
 #endif
