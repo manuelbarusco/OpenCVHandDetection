@@ -2,11 +2,13 @@
 
 //@author: Manuel Barusco, Riccardo Rampon
 
-#include "Evaluator.hpp"
+#include "../Include/Evaluator.hpp"
 #include <fstream>
 #include <opencv2/core.hpp>
+#include <opencv2/imgproc.hpp>
 
 using namespace std;
+using namespace cv;
 
 Evaluator::InvalidFile::InvalidFile(){
     cerr << "Ground Truth file is invalid";
@@ -28,7 +30,7 @@ Evaluator::ImpossibleWriteFile::ImpossibleWriteFile(){
  @param gtd ground truth directory
  @param of output file path
  */
-Evaluator::Evaluator(string gtd, string of){
+Evaluator::Evaluator(const string& gtd, const string& of){
     groundTruthDirectory = gtd;
     outputFile.open(of);
     if(!outputFile.is_open())
@@ -40,9 +42,14 @@ Evaluator::Evaluator(string gtd, string of){
  @param detections vector of rectangles with the detections of that image
  */
 void Evaluator::intersectionOverUnion(string imgFileName, vector<cv::Rect> detections){
-    string imgName = imgFileName.substr(0, imgFileName.find("."));
-    cout << groundTruthDirectory+"/det/"+imgName+".txt";
-    ifstream gtf (groundTruthDirectory+"/det/"+imgName+".txt");
+    string imgNameWithFormat = imgFileName.substr(imgFileName.find_last_of("/")+1,imgFileName.size()-1);
+    cout << imgNameWithFormat << "\n";
+
+    string imgName = imgNameWithFormat.substr(0,imgNameWithFormat.find("."));
+    cout << imgName << "\n";
+
+    cout << groundTruthDirectory+"/"+imgName+".txt";
+    ifstream gtf (groundTruthDirectory+"/"+imgName+".txt");
 
     //check for the file
     if(!gtf.is_open()){
@@ -79,11 +86,11 @@ void Evaluator::intersectionOverUnion(string imgFileName, vector<cv::Rect> detec
     }
 
     //calculate intersection over union
-    for(int i = 0; i < detections.size(); i++){
+    for(int i = 0; i < gtBB.size(); i++){
 
         //for every detection calculate the intesection over union between the detection box and every ground truth box
         vector<double> iousLocal = vector<double>();
-        for(int j = 0; j < gtBB.size(); j++){
+        for(int j = 0; j < detections.size(); j++){
             double iou = singleIntersectionOverUnion(detections[i], gtBB[j]);
             iousLocal.push_back(iou);
         }
@@ -92,10 +99,10 @@ void Evaluator::intersectionOverUnion(string imgFileName, vector<cv::Rect> detec
         double iou = *max_element(iousLocal.begin(), iousLocal.end());
         //print in the output file the IoU
         outputFile << "Image: " << imgFileName <<
-                      "Bounding Box: Coordinates Top Left Pixel: (" << detections[i].tl().x << "," << detections[i].tl().y << ")" <<
-                      ", Height: " << detections[i].height <<
-                      ", Width: " << detections[i].width <<
-                        ", IoU: " << iou << "\n";
+                      ", Ground Truth Bounding Box: Coordinates Top Left Pixel: (" << gtBB[i].tl().x << "," << gtBB[i].tl().y << ")" <<
+                      ", Height: " << gtBB[i].height <<
+                      ", Width: " << gtBB[i].width <<
+                      ", IoU: " << iou << "\n";
     }
 
     //close the input file
@@ -115,7 +122,7 @@ double Evaluator::singleIntersectionOverUnion(const cv::Rect &det, const cv::Rec
 /**
 @param imgFileName name of the input image
 @param imgGT name of the ground truth image
-@param maskSegm segmentation mask to evaluate 
+@param maskSegm segmentation mask to evaluate
 */
 void Evaluator::pixelAccuracy(std::string imgFileName, const cv::Mat imgGT, const cv::Mat maskSegm){
 
@@ -130,8 +137,10 @@ void Evaluator::pixelAccuracy(std::string imgFileName, const cv::Mat imgGT, cons
     float hand_pixel_accuracy = 0;
     float no_hand_pixel_accuracy = 0;
 
-    if (imgGT.channels() != 1) cvtColor(imgGT, imgGT, COLOR_BGR2GRAY);
-    if (maskSegm.channels() != 1) cvtColor(maskSegm, maskSegm, COLOR_BGR2GRAY);
+    if (imgGT.channels() != 1)
+        cvtColor(imgGT, imgGT, COLOR_BGR2GRAY);
+    if (maskSegm.channels() != 1)
+        cvtColor(maskSegm, maskSegm, COLOR_BGR2GRAY);
 
     for (int i = 0; i < maskSegm.rows; i++) {
         for (int j = 0; j < maskSegm.cols; j++) {
@@ -166,8 +175,9 @@ void Evaluator::pixelAccuracy(std::string imgFileName, const cv::Mat imgGT, cons
 
 }//pixelAccuracy
 
+
 /** destroyer: free all the evaluator resources
  */
-Evaluator::~Evaluator(){
+/*Evaluator::~Evaluator(){
     outputFile.close();
-}
+}*/

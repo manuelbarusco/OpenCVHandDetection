@@ -2,6 +2,7 @@
 
 #include "../Include/HandDetector.hpp"
 #include "../Include/HandSegmentator.hpp"
+#include "../Include/Evaluator.hpp"
 #include <stdio.h>
 #include <iostream>
 #include <fstream>
@@ -91,14 +92,13 @@ int mainSegmentation(int argc, const char * argv[]) {
 
     return 0;
 
-}
+}*/
+
+
+/** configureDetector
+@return HandDetector configured
 */
-/** function for only detection mode
-@param pathFolder images directory path
-*/
-void runDetector(const string& pathFolder){
-    vector<string> imgs;
-    glob(pathFolder, imgs, false);
+HandDetector configureDetector(){
     // Configuration & Weights path
     String cfg_path = "../Models/yolov3_training.cfg";
     String weights_path = "../Models/yolov3_training_last_v7.weights";
@@ -119,7 +119,18 @@ void runDetector(const string& pathFolder){
       fin.close();
     }//if
 
-    HandDetector hd = HandDetector(net, classes);
+    return HandDetector(net, classes);
+}
+
+/** function for only detection mode
+@param pathFolder images directory path
+*/
+void runDetector(const string& pathFolder){
+    vector<string> imgs;
+    glob(pathFolder, imgs, false);
+
+
+    HandDetector hd = configureDetector();
 
     for(int i = 0; i < imgs.size(); i++){
       Mat img = imread(imgs[i]);
@@ -140,27 +151,8 @@ void runDetector(const string& pathFolder){
 void runSegmentator(const string& pathFolder){
     vector<string> imgs;
     glob(pathFolder, imgs, false);
-    // Configuration & Weights path
-    String cfg_path = "../Models/yolov3_training.cfg";
-    String weights_path = "../Models/yolov3_training_last_v7.weights";
 
-    // Neural Network model
-    Net net = readNetFromDarknet(cfg_path, weights_path);
-    net.setPreferableBackend(DNN_BACKEND_OPENCV);
-    net.setPreferableTarget(DNN_TARGET_CPU);
-
-    // Load name of class
-    string classesFile = "../Models/coco2.names";
-    vector<string> classes;
-    ifstream fin (classesFile.c_str());
-    if (fin.is_open()) {
-      string line;
-      while (getline(fin, line)) classes.push_back(line);
-      //cout << line << endl;
-      fin.close();
-    }//if
-
-    HandDetector hd = HandDetector(net, classes);
+    HandDetector hd = configureDetector();
 
     for(int i = 0; i < imgs.size(); i++){
       Mat imgD = imread(imgs[i]);
@@ -174,15 +166,41 @@ void runSegmentator(const string& pathFolder){
       HandSegmentator s = HandSegmentator(imgS, outDetections.size(), outDetections);
 
       Mat out = s.multiplehandSegmentationGrabCutMask();
-      /*imshow("Segmentation", out);
+      imshow("Segmentation", out);
       waitKey();
-    }*/}
+    }
+}
+
+/** function for only detection mode
+@param pathFolder images directory path
+@param gtPath input images ground truth path
+*/
+void runDetectorWithEvaluator(const string& pathFolder, const string& gtPath){
+    vector<string> imgs;
+    glob(pathFolder, imgs, false);
+
+    HandDetector hd = configureDetector();
+    Evaluator e = Evaluator(gtPath, "resultsDetection.txt");
+
+    for(int i = 0; i < imgs.size(); i++){
+      Mat img = imread(imgs[i]);
+
+      vector<Mat> outs = hd.forward_process(img);
+
+    	vector<pair<Rect,Scalar>> outDetections = hd.post_process(img, outs);
+
+      vector<Rect> detections = vector<Rect>();
+      for(int i = 0; i < outDetections.size(); i++)
+          detections.push_back(std::get<0>(outDetections[i]));
+
+      e.intersectionOverUnion(imgs[i], detections);
+    }
 }
 
 int userMain(){
     //selection of the path to the input images
 
-    cout << "Insert the input images directory path:";
+    cout << "Please insert the input images directory path:";
     string path;
     cin >> path;
 
@@ -202,6 +220,10 @@ int userMain(){
     } else if (mode.compare("ds") == 0){
         runSegmentator(path);
     } else if (mode.compare("de") == 0){
+      string gtPath;
+      cout << "Please insert the input images ground truth directory path for detection task:";
+      cin >> gtPath;
+      runDetectorWithEvaluator(path, gtPath);
       // execute detection with evaluation
     } else if (mode.compare("se") == 0){
       //execute segmentation with evaluation2

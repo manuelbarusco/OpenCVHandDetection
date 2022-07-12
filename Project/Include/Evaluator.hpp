@@ -17,7 +17,7 @@ class Evaluator{
 
     public:
         //constructor
-        Evaluator(std::string gtd, std::string of);
+        Evaluator(const std::string& gtd, const std::string& of);
 
         //method for inteserction over union metric
         void intersectionOverUnion(std::string imgFileName, std::vector<cv::Rect> detections);
@@ -27,7 +27,7 @@ class Evaluator{
         void pixelAccuracy(std::string imgFileName, const cv::Mat imgGT, const cv::Mat maskSegm);
 
         //destroyer
-        ~Evaluator();
+        //~Evaluator();
 
         //excpetion class for invalid syntax in the grount truth files
         class InvalidFile{
