@@ -53,7 +53,7 @@ int mainDetector(){
 
   	return 0;
 }
-
+/*
 //main for segmentation module
 int mainSegmentation(int argc, const char * argv[]) {
 
@@ -92,9 +92,9 @@ int mainSegmentation(int argc, const char * argv[]) {
     return 0;
 
 }
-
+*/
 /** function for only detection mode
-@param directory images directory path
+@param pathFolder images directory path
 */
 void runDetector(const string& pathFolder){
     vector<string> imgs;
@@ -134,6 +134,51 @@ void runDetector(const string& pathFolder){
     }
 }
 
+/** function for only detection mode
+@param pathFolder images directory path
+*/
+void runSegmentator(const string& pathFolder){
+    vector<string> imgs;
+    glob(pathFolder, imgs, false);
+    // Configuration & Weights path
+    String cfg_path = "../Models/yolov3_training.cfg";
+    String weights_path = "../Models/yolov3_training_last_v7.weights";
+
+    // Neural Network model
+    Net net = readNetFromDarknet(cfg_path, weights_path);
+    net.setPreferableBackend(DNN_BACKEND_OPENCV);
+    net.setPreferableTarget(DNN_TARGET_CPU);
+
+    // Load name of class
+    string classesFile = "../Models/coco2.names";
+    vector<string> classes;
+    ifstream fin (classesFile.c_str());
+    if (fin.is_open()) {
+      string line;
+      while (getline(fin, line)) classes.push_back(line);
+      //cout << line << endl;
+      fin.close();
+    }//if
+
+    HandDetector hd = HandDetector(net, classes);
+
+    for(int i = 0; i < imgs.size(); i++){
+      Mat imgD = imread(imgs[i]);
+      Mat imgS = imgD.clone();
+      vector<Mat> outs = hd.forward_process(imgD);
+
+      vector<pair<Rect,Scalar>> outDetections = hd.post_process(imgD, outs);
+      imshow("Detection", imgD);
+      waitKey();
+
+      HandSegmentator s = HandSegmentator(imgS, outDetections.size(), outDetections);
+
+      Mat out = s.multiplehandSegmentationGrabCutMask();
+      /*imshow("Segmentation", out);
+      waitKey();
+    }*/}
+}
+
 int userMain(){
     //selection of the path to the input images
 
@@ -155,7 +200,7 @@ int userMain(){
     if(mode.compare("d") == 0){
         runDetector(path);
     } else if (mode.compare("ds") == 0){
-       // execuet segmentation
+        runSegmentator(path);
     } else if (mode.compare("de") == 0){
       // execute detection with evaluation
     } else if (mode.compare("se") == 0){

@@ -14,13 +14,13 @@
 class HandSegmentator{
     private:
       cv::Mat inputImg;
-      cv::Mat roi;                             //singe hand RoI
-      cv::Mat edgeMap;                         //edgeMap of the input image
-      cv::Mat preprocessedImage;               //processed image for image segmentation
-  	  int numberHands,isFullimgSet = 0;
-  	  std::vector<cv::Rect> rects;             //hand detections in the input image
+      cv::Mat roi;                             //single hand RoI
+      cv::Mat edgeMap;                         //edgeMap of the hand RoI
+      cv::Mat preprocessedImage;               //processed RoI image for image segmentation
+  	  int numberHands = 0;                     //number of hand detections in the input image
+  	  std::vector<std::pair<cv::Rect,cv::Scalar>> rects;             //hand detections in the input image
 
-      //method for input image preprocessing before segmentation
+      //method for RoI image preprocessing before segmentation
 
       void preprocessImage();
 
@@ -36,13 +36,12 @@ class HandSegmentator{
 
   	  cv::Mat setGrabCutFlag(cv::Mat maskPR, cv::Mat mask, int flagDefault, int flagTrue, int flagPR_True);
 
-      cv::Mat handSegmentationWithARG();
+      cv::Mat handMaskWithARG();
     public:
       //constructor
-      HandSegmentator(const cv::Mat& iImg, const int nHands, std::vector<cv::Rect>);
+      HandSegmentator(const cv::Mat& iImg, const int nHands, std::vector<std::pair<cv::Rect,cv::Scalar>> );
 
-      cv::Mat MiltiplehandSegmentationGrabCutRect();
-      cv::Mat MiltiplehandSegmentationGrabCutMask();
+      cv::Mat multiplehandSegmentationGrabCutMask();
 };
 
 

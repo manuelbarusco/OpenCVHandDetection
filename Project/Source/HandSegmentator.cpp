@@ -19,7 +19,7 @@ using namespace cv;
  @param nHands Number of hand inputImg
  @param r Vector of Rect of size nHand
  */
-HandSegmentator::HandSegmentator(const cv::Mat& iImg, const int nHands, const vector<cv::Rect> r){
+HandSegmentator::HandSegmentator(const cv::Mat& iImg, const int nHands, const vector<pair<cv::Rect,Scalar>> r){
     inputImg = iImg;
     numberHands = nHands;
     rects = r;
@@ -182,7 +182,7 @@ void HandSegmentator::preprocessImage(){
 }
 
 
-/** regionGrowing
+/** regionGrowing based on kmeans clustering and edge map
  @param seedSet vector of seed initial points
  @param outputValue value of the output highlighted pixels (default value = 255)
  */
@@ -283,7 +283,7 @@ cv::Mat HandSegmentator::advancedRegionGrowing(const vector<pair<int, int>>& see
     return visited_matrix;
 }
 
-cv::Mat HandSegmentator::handSegmentationWithARG(){
+cv::Mat HandSegmentator::handMaskWithARG(){
 
     preprocessImage();
 
@@ -321,101 +321,67 @@ cv::Mat HandSegmentator::setGrabCutFlag(cv::Mat maskPR, cv::Mat mask, int flagDe
 	return out;
 }
 
-cv::Mat HandSegmentator::MiltiplehandSegmentationGrabCutMask(){
-	//if (!isFullimgSet){
-	//	fullImg = inputImg.clone();
-	//	isFullimgSet = 1;
-	//}
-
-	cv::Mat out(inputImg.size(), inputImg.type(),cv::Scalar(0,0,0));
-	vector<cv::Mat> croppedMasks;
-	int iterations = 5;
-
-	cout<<"Number of hand on this image: "<<numberHands<<endl;
-
-	//Single hand segmentation
-	//Create vector of images cropped in ROI
-	for(int i = 0; i<numberHands; i++){
-		cv::Mat bwBig(inputImg.size(), CV_8UC1, cv::Scalar(GC_BGD));
-		//Crop the image using rectangle
-		cv::Mat handCropped;
-		handCropped = inputImg(rects[i]);
-		cv::imshow("croppedImg", handCropped);
-		cv::waitKey(0);
-
-		//Segmentation on cropped image
-		cv::Mat bwSmall(handCropped.size(),CV_8UC1, cv::Scalar(0));
-		roi = handCropped.clone();
-		bwSmall = handSegmentationWithARG();
-
-		//Morphological dilation for creating larger mask for specifing PR_FGD pixels
-		cv::Mat bwS_PR_FGD;
-		cv::Mat element = cv::getStructuringElement( cv::MORPH_ELLIPSE, cv::Size(3, 3) );
-		int opIterations  = 4;
-		morphologyEx( bwSmall, bwS_PR_FGD, cv::MORPH_DILATE, element, cv::Point(-1,-1), opIterations );
-//		cv::imshow("Binary Image after dilation", bwS_PR_FGD);
-//		cv::waitKey();
-
-		cv::Mat bwCombined = setGrabCutFlag(bwS_PR_FGD, bwSmall, GC_PR_BGD, GC_FGD, GC_PR_FGD);
-//		imshow("Binary Image combined", bwCombined);
-//		waitKey();
-
-		//Superimpose smaller hand mask in a mask of size equal to the original image
-		bwCombined.copyTo(bwBig(cv::Rect(rects[i].tl().x,rects[i].tl().y,bwCombined.cols, bwCombined.rows)));
-//		imshow("Binary Image combined full size", bwBig);
-//		waitKey();
-
-		//applay GrabCut alg.
-		cv::Mat bgd,fgd;
-		grabCut(inputImg,bwBig,Rect(),bgd,fgd,iterations,GC_INIT_WITH_MASK);
-		//Modify all pixels with GC_PR_FGD to GC_FGD for doing one compare
-		for (int i = 0; i<bwBig.rows; i++) {
-			for (int j = 0; j<bwBig.cols; j++) {
-				if(bwBig.at<unsigned char>(i,j) == GC_PR_FGD){
-					bwBig.at<unsigned char>(i,j) = GC_FGD;
-				}
-			}
-		}
-		compare(bwBig, GC_FGD, bwBig, CMP_EQ);			// CMP_EQ -> src1 is equal to src2
-		inputImg.copyTo(out,bwBig);
-//		string t = "Temp out of hand number " + std::to_string(i);
-//		imshow(t, out);
-//		waitKey();
-		destroyAllWindows();
-	}
-
-	return out;
-}
-/*
-cv::Mat HandSegmentator::MiltiplehandSegmentationGrabCutRect(){
-    cv::Mat out(inputImg.size(), inputImg.type(),cv::Scalar(0,0,0));
-    int iterations = 5;
-	if (!isFullimgSet){
-		fullImg = inputImg.clone();
-		isFullimgSet = 1;
-	}
-
-    for (int i = 0; i < numberHands; i++){
-        cv::Mat bgd, fgd, hand;
-
-        grabCut(fullImg,hand,rects[i],bgd,fgd,iterations,GC_INIT_WITH_RECT);
-
-		//Modify all pixels with GC_PR_FGD to GC_FGD for doing one compare
-		for (int i = 0; i<hand.rows; i++) {
-			for (int j = 0; j<hand.cols; j++) {
-				if(hand.at<unsigned char>(i,j) == GC_PR_FGD){
-					hand.at<unsigned char>(i,j) = GC_FGD;
-				}
-			}
-		}
-        compare(hand, GC_FGD, hand, CMP_EQ);            // CMP_EQ -> src1 is equal to src2. GC_PR_FGD -> Likely a foreground pixel
-		fullImg.copyTo(out,hand);
-//        string t = "Temp out (Rect) of hand number " + std::to_string(i);
-//        imshow(t, out);
-//        waitKey();
-        destroyAllWindows();
-      }
-
-    return out;
-}
+/**
+@return inputImg segmented
 */
+cv::Mat HandSegmentator::multiplehandSegmentationGrabCutMask(){
+
+  Mat out(inputImg.size(), inputImg.type(),Scalar(0,0,0));
+ 	vector<Mat> croppedMasks;
+ 	int iterations = 5;
+
+ 	cout<<"Number of hand on this image: "<<numberHands<<endl;
+
+ 	//Single hand segmentation
+ 	//Create vector of images cropped in ROI
+ 	for(int i = 0; i<numberHands; i++){
+ 		Mat bwBig(inputImg.size(), CV_8UC1,Scalar(GC_BGD));
+ 		//Crop the image using rectangle
+ 		Mat handCropped;
+ 		handCropped = inputImg(std::get<0>(rects[i]));
+ 		imshow("croppedImg", handCropped);
+ 		waitKey(0);
+
+ 		//Segmentation on cropped image
+ 		Mat bwSmall(handCropped.size(),CV_8UC1, Scalar(0));
+ 		roi = handCropped.clone();
+ 		bwSmall = handMaskWithARG();
+
+ 		//Morphological dilation for creating larger mask for specifing PR_FGD pixels
+ 		Mat bwS_PR_FGD;
+ 		Mat element = cv::getStructuringElement( cv::MORPH_ELLIPSE, cv::Size(3, 3) );
+ 		int opIterations  = 4;
+ 		morphologyEx( bwSmall, bwS_PR_FGD, MORPH_DILATE, element, Point(-1,-1), opIterations );
+ 		imshow("Binary Image after dilation", bwS_PR_FGD);
+ 		waitKey();
+
+ 		Mat bwCombined = setGrabCutFlag(bwS_PR_FGD, bwSmall, GC_PR_BGD, GC_FGD, GC_PR_FGD);
+ //		imshow("Binary Image combined", bwCombined);
+ //		waitKey();
+
+ 		//Superimpose smaller hand mask in a mask of size equal to the original image
+ 		bwCombined.copyTo(bwBig(cv::Rect(std::get<0>(rects[i]).tl().x,std::get<0>(rects[i]).tl().y,bwCombined.cols, bwCombined.rows)));
+ //		imshow("Binary Image combined full size", bwBig);
+ //		waitKey();
+
+ 		//applay GrabCut alg.
+ 		Mat bgd,fgd;
+ 		grabCut(inputImg,bwBig,Rect(),bgd,fgd,iterations,GC_INIT_WITH_MASK);
+ 		//Modify all pixels with GC_PR_FGD to GC_FGD for doing one compare
+ 		for (int i = 0; i<bwBig.rows; i++) {
+ 			for (int j = 0; j<bwBig.cols; j++) {
+ 				if(bwBig.at<unsigned char>(i,j) == GC_PR_FGD){
+ 					bwBig.at<unsigned char>(i,j) = GC_FGD;
+ 				}
+ 			}
+ 		}
+ 		compare(bwBig, GC_FGD, bwBig, CMP_EQ);			// CMP_EQ -> src1 is equal to src2
+ 		inputImg.copyTo(out,bwBig);
+ //		string t = "Temp out of hand number " + std::to_string(i);
+ //		imshow(t, out);
+ //		waitKey();
+ 		destroyAllWindows();
+ 	}
+
+ 	return out;
+}
