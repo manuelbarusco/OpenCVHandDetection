@@ -236,7 +236,7 @@ cv::Mat HandSegmentator::advancedRegionGrowing(const vector<pair<int, int>>& see
 
     // boolean array/matrix of visited image pixels, same size as image
     // all the pixels are initialised to false
-    cv::Mat visited_matrix = cv::Mat::zeros(inputImg.rows, inputImg.cols, CV_8U);
+    cv::Mat visited_matrix = cv::Mat::zeros(roi.rows, roi.cols, CV_8U);
 
     // List of points to visit
     vector<pair<int, int>> point_list = seedSet;
@@ -339,8 +339,9 @@ cv::Mat HandSegmentator::multiplehandSegmentationGrabCutMask(){
  		//Crop the image using rectangle
  		Mat handCropped;
  		handCropped = inputImg(std::get<0>(rects[i]));
- 		imshow("croppedImg", handCropped);
- 		waitKey(0);
+    Scalar color = std::get<1>(rects[i]);
+ 		//imshow("croppedImg", handCropped);
+ 		//waitKey(0);
 
  		//Segmentation on cropped image
  		Mat bwSmall(handCropped.size(),CV_8UC1, Scalar(0));
@@ -352,8 +353,8 @@ cv::Mat HandSegmentator::multiplehandSegmentationGrabCutMask(){
  		Mat element = cv::getStructuringElement( cv::MORPH_ELLIPSE, cv::Size(3, 3) );
  		int opIterations  = 4;
  		morphologyEx( bwSmall, bwS_PR_FGD, MORPH_DILATE, element, Point(-1,-1), opIterations );
- 		imshow("Binary Image after dilation", bwS_PR_FGD);
- 		waitKey();
+ 		//imshow("Binary Image after dilation", bwS_PR_FGD);
+ 		//waitKey();
 
  		Mat bwCombined = setGrabCutFlag(bwS_PR_FGD, bwSmall, GC_PR_BGD, GC_FGD, GC_PR_FGD);
  //		imshow("Binary Image combined", bwCombined);
@@ -383,5 +384,18 @@ cv::Mat HandSegmentator::multiplehandSegmentationGrabCutMask(){
  		destroyAllWindows();
  	}
 
- 	return out;
+
+ 	postProcessGrabCutForEvaluation(out);
+  return out;
+}
+
+/**
+@param imgGC img returned by the grubcut segmentation algorithm
+*/
+void HandSegmentator::postProcessGrabCutForEvaluation(Mat& imgGC){
+    cvtColor(imgGC, imgGC, COLOR_BGR2GRAY);
+    for(int i = 0; i < imgGC.rows; i++)
+        for(int j = 0; j < imgGC.cols; j++)
+            if(imgGC.at<unsigned char>(i,j) != 0)
+                imgGC.at<unsigned char>(i,j) = 255;
 }

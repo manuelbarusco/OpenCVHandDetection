@@ -42,6 +42,8 @@ class HandSegmentator{
       HandSegmentator(const cv::Mat& iImg, const int nHands, std::vector<std::pair<cv::Rect,cv::Scalar>> );
 
       cv::Mat multiplehandSegmentationGrabCutMask();
+
+      void postProcessGrabCutForEvaluation(cv::Mat& outGC);
 };
 
 
