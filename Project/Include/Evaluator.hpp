@@ -20,11 +20,11 @@ class Evaluator{
         Evaluator(const std::string& gtd, const std::string& of);
 
         //method for inteserction over union metric
-        void intersectionOverUnion(std::string imgFileName, std::vector<cv::Rect> detections);
+        void intersectionOverUnion(const std::string imgFileName, std::vector<cv::Rect> detections);
         double singleIntersectionOverUnion(const cv::Rect& det, const cv::Rect& bb);
 
         //method for pixel accuracy metric
-        void pixelAccuracy(std::string imgFileName, const cv::Mat imgGT, const cv::Mat maskSegm);
+        void pixelAccuracy(const std::string imgFileName,const cv::Mat maskSegm);
 
         //destroyer
         //~Evaluator();

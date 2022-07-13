@@ -37,6 +37,8 @@ class HandSegmentator{
   	  cv::Mat setGrabCutFlag(cv::Mat maskPR, cv::Mat mask, int flagDefault, int flagTrue, int flagPR_True);
 
       cv::Mat handMaskWithARG();
+
+
     public:
       //constructor
       HandSegmentator(const cv::Mat& iImg, const int nHands, std::vector<std::pair<cv::Rect,cv::Scalar>> );
@@ -44,6 +46,8 @@ class HandSegmentator{
       cv::Mat multiplehandSegmentationGrabCutMask();
 
       void postProcessGrabCutForEvaluation(cv::Mat& outGC);
+
+      ~HandSegmentator();	
 };
 
 

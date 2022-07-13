@@ -5,7 +5,7 @@
 #include "../Include/Evaluator.hpp"
 #include <fstream>
 #include <opencv2/core.hpp>
-#include <opencv2/imgproc.hpp>
+#include <opencv2/imgcodecs.hpp>
 
 using namespace std;
 using namespace cv;
@@ -41,7 +41,7 @@ Evaluator::Evaluator(const string& gtd, const string& of){
  @param imgFileName string with the image name in order  to recover the ground truth for that image
  @param detections vector of rectangles with the detections of that image
  */
-void Evaluator::intersectionOverUnion(string imgFileName, vector<cv::Rect> detections){
+void Evaluator::intersectionOverUnion(const string imgFileName, vector<cv::Rect> detections){
     string imgNameWithFormat = imgFileName.substr(imgFileName.find_last_of("/")+1,imgFileName.size()-1);
     cout << imgNameWithFormat << "\n";
 
@@ -121,26 +121,28 @@ double Evaluator::singleIntersectionOverUnion(const cv::Rect &det, const cv::Rec
 
 /**
 @param imgFileName name of the input image
-@param imgGT name of the ground truth image
 @param maskSegm segmentation mask to evaluate
 */
-void Evaluator::pixelAccuracy(std::string imgFileName, const cv::Mat imgGT, const cv::Mat maskSegm){
+void Evaluator::pixelAccuracy(const std::string imgFileName, const cv::Mat maskSegm){
 
-    string imgName = imgFileName.substr(0, imgFileName.find("."));
-    ifstream gtf(groundTruthDirectory + "/det/" + imgName + ".txt");
+    string imgNameWithFormat = imgFileName.substr(imgFileName.find_last_of("/")+1,imgFileName.size()-1);
+    cout << imgNameWithFormat << "\n";
 
+    string imgName = imgNameWithFormat.substr(0,imgNameWithFormat.find("."));
+    cout << imgName << "\n";
+
+    cout << groundTruthDirectory+"/"+imgName+".png" << "\n";
+
+    //open the ground truth image
+    Mat imgGT = imread(groundTruthDirectory+"/"+imgName+".png", IMREAD_GRAYSCALE);
 
     int hand_tp = 0; int hand_fp = 0; int hand_tn = 0; int hand_fn = 0;
     //int no_hand_tp = 0; int no_hand_fp = 0; int no_hand_tn = 0; int no_hand_fn = 0;
 
     unsigned char mask_intensity, maskGT_intensity = 0;
+
     float hand_pixel_accuracy = 0;
     float no_hand_pixel_accuracy = 0;
-
-    if (imgGT.channels() != 1)
-        cvtColor(imgGT, imgGT, COLOR_BGR2GRAY);
-    if (maskSegm.channels() != 1)
-        cvtColor(maskSegm, maskSegm, COLOR_BGR2GRAY);
 
     for (int i = 0; i < maskSegm.rows; i++) {
         for (int j = 0; j < maskSegm.cols; j++) {
@@ -167,11 +169,8 @@ void Evaluator::pixelAccuracy(std::string imgFileName, const cv::Mat imgGT, cons
 
     //print in the output file the IoU
     outputFile << "Image: " << imgFileName <<
-        "Pixel Accuracy (Hand): " << hand_pixel_accuracy << "\n" <<
-        "Pixel Accuracy (No Hand): " << no_hand_pixel_accuracy << "\n";
-
-    //close the input file
-    gtf.close();
+                  "Pixel Accuracy (Hand): " << hand_pixel_accuracy << "\n" <<
+                  "Pixel Accuracy (No Hand): " << no_hand_pixel_accuracy << "\n";
 
 }//pixelAccuracy
 

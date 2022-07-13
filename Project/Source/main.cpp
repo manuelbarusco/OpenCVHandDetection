@@ -145,7 +145,7 @@ void runDetector(const string& pathFolder){
     }
 }
 
-/** function for only detection mode
+/** function for only segmentation mode
 @param pathFolder images directory path
 */
 void runSegmentator(const string& pathFolder){
@@ -155,23 +155,23 @@ void runSegmentator(const string& pathFolder){
     HandDetector hd = configureDetector();
 
     for(int i = 0; i < imgs.size(); i++){
-      Mat imgD = imread(imgs[i]);
-      Mat imgS = imgD.clone();
-      vector<Mat> outs = hd.forward_process(imgD);
+        Mat imgD = imread(imgs[i]);
+        Mat imgS = imgD.clone();
+        vector<Mat> outs = hd.forward_process(imgD);
 
-      vector<pair<Rect,Scalar>> outDetections = hd.post_process(imgD, outs);
-      imshow("Detection", imgD);
-      waitKey();
+        vector<pair<Rect,Scalar>> outDetections = hd.post_process(imgD, outs);
+        imshow("Detection", imgD);
+        waitKey();
 
-      HandSegmentator s = HandSegmentator(imgS, outDetections.size(), outDetections);
+        HandSegmentator s = HandSegmentator(imgS, outDetections.size(), outDetections);
 
-      Mat out = s.multiplehandSegmentationGrabCutMask();
-      imshow("Segmentation", out);
-      waitKey();
+        Mat out = s.multiplehandSegmentationGrabCutMask();
+        imshow("Segmentation", out);
+        waitKey();
     }
 }
 
-/** function for only detection mode
+/** function for detection+evaluation mode
 @param pathFolder images directory path
 @param gtPath input images ground truth path
 */
@@ -194,6 +194,31 @@ void runDetectorWithEvaluator(const string& pathFolder, const string& gtPath){
           detections.push_back(std::get<0>(outDetections[i]));
 
       e.intersectionOverUnion(imgs[i], detections);
+    }
+}
+
+/** function for only segmentation+evaluation mode
+@param pathFolder images directory path
+@param gtPath input images ground truth path
+*/
+void runSegmentatorWithEvaluator(const string& pathFolder, const string& gtPath){
+    vector<string> imgs;
+    glob(pathFolder, imgs, false);
+
+    HandDetector hd = configureDetector();
+    Evaluator e = Evaluator(gtPath, "resultsDetection.txt");
+
+    for(int i = 0; i < imgs.size(); i++){
+      Mat img = imread(imgs[i]);
+
+      vector<Mat> outs = hd.forward_process(img);
+
+    	vector<pair<Rect,Scalar>> outDetections = hd.post_process(img, outs);
+
+      HandSegmentator s = HandSegmentator(img, outDetections.size(), outDetections);
+      Mat outSegmentation = s.multiplehandSegmentationGrabCutMask();
+
+      e.pixelAccuracy(imgs[i], outSegmentation);
     }
 }
 
@@ -224,9 +249,11 @@ int userMain(){
       cout << "Please insert the input images ground truth directory path for detection task:";
       cin >> gtPath;
       runDetectorWithEvaluator(path, gtPath);
-      // execute detection with evaluation
     } else if (mode.compare("se") == 0){
-      //execute segmentation with evaluation2
+      string gtPath;
+      cout << "Please insert the input images ground truth directory path for segmentation task:";
+      cin >> gtPath;
+      runSegmentatorWithEvaluator(path, gtPath);
     } else {
       cerr << "Insert a valid execution mode";
       return 1;

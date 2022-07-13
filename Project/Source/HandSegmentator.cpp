@@ -399,3 +399,10 @@ void HandSegmentator::postProcessGrabCutForEvaluation(Mat& imgGC){
             if(imgGC.at<unsigned char>(i,j) != 0)
                 imgGC.at<unsigned char>(i,j) = 255;
 }
+
+//destroyer
+HandSegmentator::~HandSegmentator(){
+    roi.release();
+    roi.release();
+    roi.release();
+}
