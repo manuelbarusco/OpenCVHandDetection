@@ -45,7 +45,7 @@ class HandSegmentator{
 
       cv::Mat multiplehandSegmentationGrabCutMask();
 
-      void postProcessGrabCutForEvaluation(cv::Mat& outGC);
+      void createBinaryMask(cv::Mat& outGC);
 
       ~HandSegmentator();	
 };

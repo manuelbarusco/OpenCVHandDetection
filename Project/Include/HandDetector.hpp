@@ -16,6 +16,7 @@ class HandDetector {
 		cv::dnn::Net net;
 		std::vector<std::string> class_names;
 		std::ofstream outF;
+		std::vector<cv::Scalar> colors;
 
 
 		const float INPUT_WIDTH = 416.0;

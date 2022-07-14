@@ -328,6 +328,7 @@ cv::Mat HandSegmentator::multiplehandSegmentationGrabCutMask(){
 
   Mat out(inputImg.size(), inputImg.type(),Scalar(0,0,0));
  	vector<Mat> croppedMasks;
+	Mat colorHands = inputImg.clone();
  	int iterations = 5;
 
  	cout<<"Number of hand on this image: "<<numberHands<<endl;
@@ -339,7 +340,7 @@ cv::Mat HandSegmentator::multiplehandSegmentationGrabCutMask(){
  		//Crop the image using rectangle
  		Mat handCropped;
  		handCropped = inputImg(std::get<0>(rects[i]));
-    Scalar color = std::get<1>(rects[i]);
+		Scalar color = std::get<1>(rects[i]);
  		//imshow("croppedImg", handCropped);
  		//waitKey(0);
 
@@ -376,24 +377,42 @@ cv::Mat HandSegmentator::multiplehandSegmentationGrabCutMask(){
  				}
  			}
  		}
+		
  		compare(bwBig, GC_FGD, bwBig, CMP_EQ);			// CMP_EQ -> src1 is equal to src2
- 		inputImg.copyTo(out,bwBig);
-
-
+		
+		createBinaryMask(bwBig);
+		inputImg.copyTo(out,bwBig);
+		
+		//add color
+		for(int i = 0; i < bwBig.rows; i++)
+			for(int j = 0; j < bwBig.cols; j++)
+				if(bwBig.at<unsigned char>(i,j) == 255){
+					if(color[0] != 0)
+						colorHands.at<Vec3b>(i,j)[0] = color[0]/2;
+					if(color[1] != 0)
+						colorHands.at<Vec3b>(i,j)[1] = color[1]/2;
+					if(color[2] != 0)
+						colorHands.at<Vec3b>(i,j)[2] = color[2]/2;
+				}
+		
+		imshow("Segmetation result with colors", colorHands);
+		waitKey();
+		
  	}
-
+	
     roi.release();
     preprocessedImage.release();
     edgeMap.release();
- 	postProcessGrabCutForEvaluation(out);
+	createBinaryMask(out);
     return out;
 }
 
 /**
-@param imgGC img returned by the grubcut segmentation algorithm
+@param imgGC img to be converted in binary mask
 */
-void HandSegmentator::postProcessGrabCutForEvaluation(Mat& imgGC){
-    cvtColor(imgGC, imgGC, COLOR_BGR2GRAY);
+void HandSegmentator::createBinaryMask(Mat& imgGC){
+	if (imgGC.channels() != 1) 
+		cvtColor(imgGC, imgGC, COLOR_BGR2GRAY);
     for(int i = 0; i < imgGC.rows; i++)
         for(int j = 0; j < imgGC.cols; j++)
             if(imgGC.at<unsigned char>(i,j) != 0)
