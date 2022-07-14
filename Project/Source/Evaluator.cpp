@@ -169,7 +169,7 @@ void Evaluator::pixelAccuracy(const std::string imgFileName, const cv::Mat maskS
 
     //print in the output file the IoU
     outputFile << "Image: " << imgFileName <<
-                  "Pixel Accuracy (Hand): " << hand_pixel_accuracy << "\n" <<
+                  "Pixel Accuracy (Hand): " << hand_pixel_accuracy <<
                   "Pixel Accuracy (No Hand): " << no_hand_pixel_accuracy << "\n";
 
 }//pixelAccuracy

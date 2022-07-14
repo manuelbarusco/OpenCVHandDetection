@@ -47,7 +47,9 @@ class HandSegmentator{
 
       void createBinaryMask(cv::Mat& outGC);
 
-      ~HandSegmentator();	
+      cv::Mat multiplehandSegmentationRegionGrowing();
+
+      ~HandSegmentator();
 };
 
 

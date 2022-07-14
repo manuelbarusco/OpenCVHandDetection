@@ -155,7 +155,7 @@ void HandSegmentator::preprocessImage(){
     //waitKey();
 
     // PHASE 2: EDGE MAP extraction with Canny
-    cv::Canny(preprocessedImage, edgeMap , 30, 220);
+    cv::Canny(preprocessedImage, edgeMap , 10, 180);
     //imshow("Edge map", edgeMap);
     //waitKey;
 
@@ -321,13 +321,40 @@ cv::Mat HandSegmentator::setGrabCutFlag(cv::Mat maskPR, cv::Mat mask, int flagDe
 	return out;
 }
 
+cv::Mat HandSegmentator::multiplehandSegmentationRegionGrowing(){
+
+    Mat out(inputImg.size(), CV_8U, Scalar(0,0,0));
+	Mat colorHands = inputImg.clone();
+    int iterations = 5;
+
+    cout<<"Number of hand on this image: "<<numberHands<<endl;
+
+ 	//Single hand segmentation
+ 	//Create vector of images cropped in ROI
+ 	for(int n = 0; n<numberHands; n++){
+ 		//Crop the image using rectangle
+ 		Mat handCropped = inputImg(std::get<0>(rects[n]));
+
+        roi = handCropped.clone();
+
+        Mat hand = handMaskWithARG();
+
+        Mat hand_mask(inputImg.size(), CV_8U, Scalar(0,0,0));
+
+        hand.copyTo(hand_mask(std::get<0>(rects[n])));
+
+        bitwise_or(out, hand_mask, out);
+
+    }
+    return out;
+}
+
 /**
 @return inputImg segmented
 */
 cv::Mat HandSegmentator::multiplehandSegmentationGrabCutMask(){
 
-  Mat out(inputImg.size(), inputImg.type(),Scalar(0,0,0));
- 	vector<Mat> croppedMasks;
+    Mat out(inputImg.size(), inputImg.type(),Scalar(0,0,0));
 	Mat colorHands = inputImg.clone();
  	int iterations = 5;
 
@@ -352,7 +379,7 @@ cv::Mat HandSegmentator::multiplehandSegmentationGrabCutMask(){
  		//Morphological dilation for creating larger mask for specifing PR_FGD pixels
  		Mat bwS_PR_FGD;
  		Mat element = cv::getStructuringElement( cv::MORPH_ELLIPSE, cv::Size(3, 3) );
- 		int opIterations  = 4;
+ 		int opIterations = 4;
  		morphologyEx( bwSmall, bwS_PR_FGD, MORPH_DILATE, element, Point(-1,-1), opIterations );
  		//imshow("Binary Image after dilation", bwS_PR_FGD);
  		//waitKey();
@@ -377,12 +404,12 @@ cv::Mat HandSegmentator::multiplehandSegmentationGrabCutMask(){
  				}
  			}
  		}
-		
+
  		compare(bwBig, GC_FGD, bwBig, CMP_EQ);			// CMP_EQ -> src1 is equal to src2
-		
+
 		createBinaryMask(bwBig);
 		inputImg.copyTo(out,bwBig);
-		
+
 		//add color
 		for(int i = 0; i < bwBig.rows; i++)
 			for(int j = 0; j < bwBig.cols; j++)
@@ -394,12 +421,13 @@ cv::Mat HandSegmentator::multiplehandSegmentationGrabCutMask(){
 					if(color[2] != 0)
 						colorHands.at<Vec3b>(i,j)[2] = color[2]/2;
 				}
-		
-		imshow("Segmetation result with colors", colorHands);
-		waitKey();
-		
+
+		//imshow("Segmetation result with colors", colorHands);
+		//waitKey();
+
  	}
-	
+    imshow("Segmetation result with colors", colorHands);
+    waitKey();
     roi.release();
     preprocessedImage.release();
     edgeMap.release();
@@ -411,7 +439,7 @@ cv::Mat HandSegmentator::multiplehandSegmentationGrabCutMask(){
 @param imgGC img to be converted in binary mask
 */
 void HandSegmentator::createBinaryMask(Mat& imgGC){
-	if (imgGC.channels() != 1) 
+	if (imgGC.channels() != 1)
 		cvtColor(imgGC, imgGC, COLOR_BGR2GRAY);
     for(int i = 0; i < imgGC.rows; i++)
         for(int j = 0; j < imgGC.cols; j++)

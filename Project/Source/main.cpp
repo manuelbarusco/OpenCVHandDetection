@@ -155,7 +155,6 @@ void runSegmentator(const string& pathFolder){
     HandDetector hd = configureDetector();
 
     for(int i = 0; i < imgs.size(); i++){
-      //if(i==16){
         Mat imgD = imread(imgs[i]);
         Mat imgS = imgD.clone();
         vector<Mat> outs = hd.forward_process(imgD);
@@ -166,10 +165,9 @@ void runSegmentator(const string& pathFolder){
 
         HandSegmentator s = HandSegmentator(imgS, outDetections.size(), outDetections);
 
-        Mat out = s.multiplehandSegmentationGrabCutMask();
+        Mat out = s.multiplehandSegmentationRegionGrowing();
         imshow("Segmentation", out);
         waitKey();
-      //}
     }
 }
 
@@ -189,7 +187,7 @@ void runDetectorWithEvaluator(const string& pathFolder, const string& gtPath){
 
       vector<Mat> outs = hd.forward_process(img);
 
-    	vector<pair<Rect,Scalar>> outDetections = hd.post_process(img, outs);
+      vector<pair<Rect,Scalar>> outDetections = hd.post_process(img, outs);
 
       vector<Rect> detections = vector<Rect>();
       for(int i = 0; i < outDetections.size(); i++)
@@ -218,9 +216,20 @@ void runSegmentatorWithEvaluator(const string& pathFolder, const string& gtPath)
       vector<pair<Rect,Scalar>> outDetections = hd.post_process(img, outs);
 
       HandSegmentator s = HandSegmentator(img, outDetections.size(), outDetections);
-      Mat outSegmentation = s.multiplehandSegmentationGrabCutMask();
+      Mat outSegmentation = s.multiplehandSegmentationRegionGrowing();
 
-      e.pixelAccuracy(imgs[i], outSegmentation);
+      string imgNameWithFormat = imgs[i].substr(imgs[i].find_last_of("/")+1,imgs[i].size()-1);
+      imwrite("../Test/output_segmentation/"+imgNameWithFormat, outSegmentation);
+
+      img.release();
+      outSegmentation.release();
+    }
+
+    glob("../Test/output_segmentation", imgs, false);
+    for(int i = 0; i < imgs.size(); i++){
+        Mat mask = imread(imgs[i], IMREAD_GRAYSCALE);
+        e.pixelAccuracy(imgs[i], mask);
+        mask.release();
     }
 }
 

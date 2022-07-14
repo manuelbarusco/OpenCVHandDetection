@@ -112,6 +112,11 @@ vector<pair<Rect,Scalar>> HandDetector::post_process(Mat& image, vector<Mat>& ou
 @param bbox detection box
 */
 void HandDetector::refineBBox(const Mat& img, Rect& bbox){
+	//enlarge a little bit the bounding box
+	constexpr int inflation = 50;
+	bbox += cv::Point(-inflation/2, -inflation/2);
+	bbox += cv::Size(inflation, inflation);
+
 	//check cols
 	if(bbox.x < 0)
 		bbox.x = 0;
