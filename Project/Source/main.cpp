@@ -155,6 +155,7 @@ void runSegmentator(const string& pathFolder){
     HandDetector hd = configureDetector();
 
     for(int i = 0; i < imgs.size(); i++){
+      if(i==16){
         Mat imgD = imread(imgs[i]);
         Mat imgS = imgD.clone();
         vector<Mat> outs = hd.forward_process(imgD);
@@ -168,6 +169,8 @@ void runSegmentator(const string& pathFolder){
         Mat out = s.multiplehandSegmentationGrabCutMask();
         imshow("Segmentation", out);
         waitKey();
+
+      }
     }
 }
 
@@ -206,14 +209,14 @@ void runSegmentatorWithEvaluator(const string& pathFolder, const string& gtPath)
     glob(pathFolder, imgs, false);
 
     HandDetector hd = configureDetector();
-    Evaluator e = Evaluator(gtPath, "resultsDetection.txt");
+    Evaluator e = Evaluator(gtPath, "resultsSegmentation.txt");
 
     for(int i = 0; i < imgs.size(); i++){
       Mat img = imread(imgs[i]);
 
       vector<Mat> outs = hd.forward_process(img);
 
-    	vector<pair<Rect,Scalar>> outDetections = hd.post_process(img, outs);
+      vector<pair<Rect,Scalar>> outDetections = hd.post_process(img, outs);
 
       HandSegmentator s = HandSegmentator(img, outDetections.size(), outDetections);
       Mat outSegmentation = s.multiplehandSegmentationGrabCutMask();

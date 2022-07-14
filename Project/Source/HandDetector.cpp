@@ -96,13 +96,34 @@ vector<pair<Rect,Scalar>> HandDetector::post_process(Mat& image, vector<Mat>& ou
 		int ind = indices[i];
 		Rect bbox = boxes[ind];
 		Scalar color = Scalar(rng.uniform(0,255), rng.uniform(0, 255), rng.uniform(0, 255));
-		out_boxes.push_back(pair<Rect,Scalar>(boxes[ind],color));
+
+		//refine box in case it goes outside the image
+		refineBBox(image, bbox);
+		out_boxes.push_back(pair<Rect,Scalar>(bbox,color));
 		draw_box_prediction(image, color, classIDs[ind], confidences[ind], bbox.x, bbox.y, bbox.x+bbox.width, bbox.y+bbox.height); // draw box
 		create_detection_file(bbox.x, bbox.y, bbox.width, bbox.height);
 	}//for
 
 	return out_boxes;
 }//post_process
+
+/** method for refining detection boxes in case they go outside the image
+@param img input image
+@param bbox detection box
+*/
+void HandDetector::refineBBox(const Mat& img, Rect& bbox){
+	//check cols
+	if(bbox.x < 0)
+		bbox.x = 0;
+	if(bbox.x + bbox.width > img.cols)
+		bbox.width = img.cols - bbox.x - 1;
+
+	//check rows
+	if(bbox.y < 0)
+		bbox.y = 0;
+	if(bbox.y + bbox.height > img.rows)
+		bbox.height = img.rows - bbox.y -1;
+}
 
 /* draw_box_prediction()
 * This function will create the box on the image and the label associated

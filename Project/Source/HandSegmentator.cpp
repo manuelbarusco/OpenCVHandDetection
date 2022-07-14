@@ -378,15 +378,15 @@ cv::Mat HandSegmentator::multiplehandSegmentationGrabCutMask(){
  		}
  		compare(bwBig, GC_FGD, bwBig, CMP_EQ);			// CMP_EQ -> src1 is equal to src2
  		inputImg.copyTo(out,bwBig);
- //		string t = "Temp out of hand number " + std::to_string(i);
- //		imshow(t, out);
- //		waitKey();
- 		destroyAllWindows();
+
+
  	}
 
-
+    roi.release();
+    preprocessedImage.release();
+    edgeMap.release();
  	postProcessGrabCutForEvaluation(out);
-  return out;
+    return out;
 }
 
 /**
@@ -403,6 +403,6 @@ void HandSegmentator::postProcessGrabCutForEvaluation(Mat& imgGC){
 //destroyer
 HandSegmentator::~HandSegmentator(){
     roi.release();
-    roi.release();
-    roi.release();
+    preprocessedImage.release();
+    edgeMap.release();
 }

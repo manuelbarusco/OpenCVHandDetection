@@ -141,8 +141,8 @@ void Evaluator::pixelAccuracy(const std::string imgFileName, const cv::Mat maskS
 
     unsigned char mask_intensity, maskGT_intensity = 0;
 
-    float hand_pixel_accuracy = 0;
-    float no_hand_pixel_accuracy = 0;
+    double hand_pixel_accuracy = 0;
+    double no_hand_pixel_accuracy = 0;
 
     for (int i = 0; i < maskSegm.rows; i++) {
         for (int j = 0; j < maskSegm.cols; j++) {
@@ -153,7 +153,7 @@ void Evaluator::pixelAccuracy(const std::string imgFileName, const cv::Mat maskS
                 if (mask_intensity == 255)
                     hand_tp++; //tutti e due white
                 else
-                    hand_fn++; //gt � white quello predetto � black
+                    hand_fp++; //gt � white quello predetto � black
             }
             else { //imgGT(i,j) -> black
                 if (mask_intensity == 0)
@@ -164,8 +164,8 @@ void Evaluator::pixelAccuracy(const std::string imgFileName, const cv::Mat maskS
         }//for
     }//for
 
-    hand_pixel_accuracy = static_cast<float>(hand_tp / (hand_tp + hand_fn));
-    no_hand_pixel_accuracy = static_cast<float>(hand_tn / (hand_tn + hand_fp));
+    hand_pixel_accuracy = static_cast<double>(hand_tp) / (hand_tp + hand_fn);
+    no_hand_pixel_accuracy = static_cast<double>(hand_tn) / (hand_tn + hand_fp);
 
     //print in the output file the IoU
     outputFile << "Image: " << imgFileName <<

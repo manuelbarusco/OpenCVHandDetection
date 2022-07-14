@@ -27,6 +27,14 @@ class HandDetector {
 		const int  FONT_TYPE = cv::FONT_HERSHEY_SIMPLEX;
 		const int FONT_THICKNESS = 2;
 
+		void draw_box_prediction(cv::Mat& image, const cv::Scalar& color, int classId, float confidence, int X_top, int Y_top, int X_bottom, int Y_bottom);
+
+		std::vector<std::string> getOutputLayersNames(const cv::dnn::Net& net);
+
+		void create_detection_file(int X_top, int Y_top, int width, int height);
+
+		void refineBBox(const cv::Mat& img, cv::Rect& bbox);
+
 	public:
 
 		HandDetector(const cv::dnn::Net& net, const std::vector<std::string>& class_names);
@@ -35,11 +43,7 @@ class HandDetector {
 
 		std::vector<std::pair<cv::Rect,cv::Scalar>> post_process(cv::Mat& image, std::vector<cv::Mat>& outputs);
 
-		void draw_box_prediction(cv::Mat& image, const cv::Scalar& color, int classId, float confidence, int X_top, int Y_top, int X_bottom, int Y_bottom);
 
-		std::vector<std::string> getOutputLayersNames(const cv::dnn::Net& net);
-
-		void create_detection_file(int X_top, int Y_top, int width, int height);
 };
 
 #endif
