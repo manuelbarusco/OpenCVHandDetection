@@ -10,6 +10,8 @@
 using namespace std;
 using namespace cv;
 
+//Classes for handling exceptions
+
 Evaluator::InvalidFile::InvalidFile(){
     cerr << "Ground Truth file is invalid";
 } //InvalidFile
@@ -20,7 +22,7 @@ Evaluator::EmptyFile::EmptyFile(){
 
 Evaluator::FileDoesNotExist::FileDoesNotExist(){
     cerr << "Image not present in the ground truth dataset";
-} //InvalidFile
+} //FileDoesNotExist
 
 Evaluator::ImpossibleWriteFile::ImpossibleWriteFile(){
     cerr << "Impossible to write the output file";
@@ -41,14 +43,12 @@ Evaluator::Evaluator(const string& gtd, const string& of){
  @param imgFileName string with the image name in order  to recover the ground truth for that image
  @param detections vector of rectangles with the detections of that image
  */
-void Evaluator::intersectionOverUnion(const string imgFileName, vector<cv::Rect> detections){
+void Evaluator::intersectionOverUnion(const string& imgFileName, vector<Rect>& detections){
     string imgNameWithFormat = imgFileName.substr(imgFileName.find_last_of("/")+1,imgFileName.size()-1);
-    cout << imgNameWithFormat << "\n";
 
     string imgName = imgNameWithFormat.substr(0,imgNameWithFormat.find("."));
-    cout << imgName << "\n";
 
-    cout << groundTruthDirectory+"/"+imgName+".txt";
+    cout << "Computing IoU for image: " << imgName << "\n";
     ifstream gtf (groundTruthDirectory+"/"+imgName+".txt");
 
     //check for the file
@@ -58,7 +58,7 @@ void Evaluator::intersectionOverUnion(const string imgFileName, vector<cv::Rect>
     }
 
     //construct ground truth bounding boxes
-    vector<cv::Rect> gtBB = vector<cv::Rect>();
+    vector<Rect> gtBB = vector<Rect>();
     string line;
     bool first = true;
     while(getline(gtf,line)){
@@ -79,7 +79,7 @@ void Evaluator::intersectionOverUnion(const string imgFileName, vector<cv::Rect>
         if(x == EOF || y == EOF || w == EOF || h == EOF )
             throw InvalidFile();
 
-        cv::Rect r= cv::Rect(x,y,w,h);
+        Rect r= Rect(x,y,w,h);
         gtBB.push_back(r);
         if(first)
             first = false;
@@ -88,7 +88,7 @@ void Evaluator::intersectionOverUnion(const string imgFileName, vector<cv::Rect>
     //calculate intersection over union
     for(int i = 0; i < gtBB.size(); i++){
 
-        //for every detection calculate the intesection over union between the detection box and every ground truth box
+        //for every ground truth bounding box calculate the intesection over union between the box and every bounding box found
         vector<double> iousLocal = vector<double>();
         for(int j = 0; j < detections.size(); j++){
             double iou = singleIntersectionOverUnion(detections[i], gtBB[j]);
@@ -114,8 +114,8 @@ void Evaluator::intersectionOverUnion(const string imgFileName, vector<cv::Rect>
  @param bb detection bounding box ground truth
  @return intersection over union of det and bb rectangles
  */
-double Evaluator::singleIntersectionOverUnion(const cv::Rect &det, const cv::Rect &bb){
-    cv::Rect intersection = det & bb;
+double Evaluator::singleIntersectionOverUnion(const Rect &det, const Rect &bb){
+    Rect intersection = det & bb;
     return static_cast<double>(intersection.area()) / (det.area() + bb.area() - intersection.area());
 }
 
@@ -123,7 +123,7 @@ double Evaluator::singleIntersectionOverUnion(const cv::Rect &det, const cv::Rec
 @param imgFileName name of the input image
 @param maskSegm segmentation mask to evaluate
 */
-void Evaluator::pixelAccuracy(const std::string imgFileName, const cv::Mat maskSegm){
+void Evaluator::pixelAccuracy(const string& imgFileName, const Mat& maskSegm){
 
     string imgNameWithFormat = imgFileName.substr(imgFileName.find_last_of("/")+1,imgFileName.size()-1);
     cout << imgNameWithFormat << "\n";
@@ -173,10 +173,3 @@ void Evaluator::pixelAccuracy(const std::string imgFileName, const cv::Mat maskS
                   "Pixel Accuracy (No Hand): " << no_hand_pixel_accuracy << "\n";
 
 }//pixelAccuracy
-
-
-/** destroyer: free all the evaluator resources
- */
-/*Evaluator::~Evaluator(){
-    outputFile.close();
-}*/

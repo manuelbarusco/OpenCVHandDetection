@@ -12,24 +12,21 @@
 //Evalutor class for detection and segmentation evaluation
 class Evaluator{
     private:
-        std::string groundTruthDirectory;        //folder that contains the detection and segmentation ground truth files
+        std::string groundTruthDirectory;        //folder that contains the detection and segmentation ground truth files and directories
         std::ofstream outputFile;                //file where to print the evalutation metrics
 
+        double singleIntersectionOverUnion(const cv::Rect& det, const cv::Rect& bb);
     public:
         //constructor
         Evaluator(const std::string& gtd, const std::string& of);
 
         //method for inteserction over union metric
-        void intersectionOverUnion(const std::string imgFileName, std::vector<cv::Rect> detections);
-        double singleIntersectionOverUnion(const cv::Rect& det, const cv::Rect& bb);
+        void intersectionOverUnion(const std::string& imgFileName, std::vector<cv::Rect>& detections);
 
         //method for pixel accuracy metric
-        void pixelAccuracy(const std::string imgFileName,const cv::Mat maskSegm);
+        void pixelAccuracy(const std::string& imgFileName,const cv::Mat& maskSegm);
 
-        //destroyer
-        //~Evaluator();
-
-        //excpetion class for invalid syntax in the grount truth files
+        //excpetion class for invalid syntax in the ground truth files
         class InvalidFile{
             public:
                 InvalidFile();

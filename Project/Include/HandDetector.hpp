@@ -15,10 +15,9 @@ class HandDetector {
 
 		cv::dnn::Net net;
 		std::vector<std::string> class_names;
-		std::ofstream outF;
 		std::vector<cv::Scalar> colors;
 
-
+		//Constants 
 		const float INPUT_WIDTH = 416.0;
 		const float INPUT_HEIGHT = 416.0;
 		const float CONFIDENCE_THRESHOLD = 0.75; // Confidence threshold
@@ -31,8 +30,6 @@ class HandDetector {
 		void draw_box_prediction(cv::Mat& image, const cv::Scalar& color, int classId, float confidence, int X_top, int Y_top, int X_bottom, int Y_bottom);
 
 		std::vector<std::string> getOutputLayersNames(const cv::dnn::Net& net);
-
-		void create_detection_file(int X_top, int Y_top, int width, int height);
 
 		void refineBBox(const cv::Mat& img, cv::Rect& bbox);
 

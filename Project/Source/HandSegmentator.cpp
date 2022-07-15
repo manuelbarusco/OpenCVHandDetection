@@ -5,9 +5,7 @@
 
 #include "../Include/HandSegmentator.hpp"
 #include <opencv2/core.hpp>
-#include <opencv2/highgui.hpp>
 #include <opencv2/imgproc.hpp>
-#include <opencv2/imgcodecs.hpp>
 #include <iostream>
 #include <set>
 
@@ -15,29 +13,14 @@ using namespace std;
 using namespace cv;
 
 /** constructor
- @param iImg input img to be
- @param nHands Number of hand inputImg
- @param r Vector of Rect of size nHand
+ @param iImg input img to be segmented
+ @param nHands Number of hands in inputImg
+ @param r Vector of Rect of size nHands, it contains all the hand detections in iImg
  */
-HandSegmentator::HandSegmentator(const cv::Mat& iImg, const int nHands, const vector<pair<cv::Rect,Scalar>> r){
+HandSegmentator::HandSegmentator(const Mat& iImg, const int nHands, const vector<pair<Rect,Scalar>> r){
     inputImg = iImg;
     numberHands = nHands;
     rects = r;
-}
-
-//For Simple thresholding on YCrCb plane based on skin color
-cv::Mat HandSegmentator::thresholdingYCrCb(){
-    int Y_MIN  = 0;
-    int Y_MAX  = 255;
-    int Cr_MIN = 133;
-    int Cr_MAX = 173;
-    int Cb_MIN = 77;
-    int Cb_MAX = 127;
-    cv::Mat mask;
-    //first convert our RGB image to YCrCb
-    cv::cvtColor(inputImg,mask,cv::COLOR_BGR2YCrCb);
-    cv::inRange(mask,cv::Scalar(Y_MIN,Cr_MIN,Cb_MIN),cv::Scalar(Y_MAX,Cr_MAX,Cb_MAX),mask);
-    return mask;
 }
 
 /** Min-Max normaliaztion for kmeans based on pixel color and position
@@ -46,7 +29,7 @@ cv::Mat HandSegmentator::thresholdingYCrCb(){
 @param weightY weight for the y-position component in the feature vector
 @param threeChannels boolean that indicates if img is a 3-channels img
 */
-void HandSegmentator::minMaxNormalization(cv::Mat &img, float weightX, float weightY, bool treeChannels){
+void HandSegmentator::minMaxNormalization(Mat &img, float weightX, float weightY, bool treeChannels){
     int dim = 3;
     if (treeChannels)
         dim = 5;
@@ -89,19 +72,17 @@ void HandSegmentator::minMaxNormalization(cv::Mat &img, float weightX, float wei
 @param weightY weight for the y-position component in the feature vector
 @return img segmented
 */
-cv::Mat HandSegmentator::kmeansSegmentationPositionQuantization(int K, float weightX,float weightY){
-    cv::Mat labels, centers;
-
-    cv::Mat imgResult = preprocessedImage.clone();
+Mat HandSegmentator::kmeansSegmentationPositionQuantization(int K, float weightX,float weightY){
+    Mat labels, centers;
 
     //Conver to float for kmeans
-    imgResult.convertTo(roi, CV_32FC3, 1.0/255.0);
+    roi.convertTo(roi, CV_32FC3, 1.0/255.0);
 
-    cv::Mat points(roi.rows * roi.cols, 5, CV_32FC1);
+    Mat points(roi.rows * roi.cols, 5, CV_32FC1);
      for( int y = 0; y < roi.rows; y++ )
          for( int x = 0; x < roi.cols; x++ ){
              for(int z = 0; z < 3; z++)
-                 points.at<float>(y + x*roi.rows, z) = roi.at<cv::Vec3f>(y,x)[z];
+                 points.at<float>(y + x*roi.rows, z) = roi.at<Vec3f>(y,x)[z];
                  points.at<float>(y + x*roi.rows, 3) = (float) y ;
                  points.at<float>(y + x*roi.rows, 4) = (float) x;
          }
@@ -109,26 +90,26 @@ cv::Mat HandSegmentator::kmeansSegmentationPositionQuantization(int K, float wei
     minMaxNormalization(points,weightX,weightY,true);
 
     int attempts = 10;
-    cv::kmeans(points, K, labels, cv::TermCriteria(cv::TermCriteria::EPS+cv::TermCriteria::COUNT, 100000, 0.00001 ), attempts, cv::KMEANS_PP_CENTERS, centers );
+    kmeans(points, K, labels, TermCriteria(TermCriteria::EPS+TermCriteria::COUNT, 100000, 0.00001 ), attempts, KMEANS_PP_CENTERS, centers );
 
-    cv::Mat out( roi.size(), CV_32FC3 );
+    Mat out( roi.size(), CV_32FC3 );
     for( int y = 0; y < roi.rows; y++ )
       for( int x = 0; x < roi.cols; x++ ){
           int cluster_idx = labels.at<int>(y + x*roi.rows,0);
-            out.at<cv::Vec3f>(y,x)[0] = centers.at<float>(cluster_idx, 0)*255;
-            out.at<cv::Vec3f>(y,x)[1] = centers.at<float>(cluster_idx, 1)*255;
-            out.at<cv::Vec3f>(y,x)[2] = centers.at<float>(cluster_idx, 2)*255;
+            out.at<Vec3f>(y,x)[0] = centers.at<float>(cluster_idx, 0)*255;
+            out.at<Vec3f>(y,x)[1] = centers.at<float>(cluster_idx, 1)*255;
+            out.at<Vec3f>(y,x)[2] = centers.at<float>(cluster_idx, 2)*255;
       }
     out.convertTo(out, CV_8UC3);
     return out;
 }
 
 /**
-method for preprocessing imgInput in order to obtain a better img
+method for preprocessing the input RoI in order to obtain a better image for
 for the advancedRegionGrowing method, we perform bilateralFiltering and we extract
 edges with Canny
 */
-void HandSegmentator::preprocessImage(){
+void HandSegmentator::preprocessRoI(){
     /*
 
     // PHASE 1: SHARPENING for edge enhacement
@@ -148,17 +129,17 @@ void HandSegmentator::preprocessImage(){
     imgLaplacian.convertTo(imgLaplacian, CV_8UC3);*/
 
     // PHASE 2: BILATERAL FILTER for blurring for noise and minor details reduction but still preserving edges
-
     //bilateral smoothing for image enhancement
-    cv::bilateralFilter(roi,preprocessedImage,10,50,120,cv::BORDER_DEFAULT);
+    Mat blurred;
+    bilateralFilter(roi,blurred,10,50,120,BORDER_DEFAULT);
+    roi = blurred;
     //imshow("Blurred", preprocessedImage);
     //waitKey();
 
     // PHASE 2: EDGE MAP extraction with Canny
-    cv::Canny(preprocessedImage, edgeMap , 10, 180);
+    Canny(roi, edgeMap , 10, 150);
     //imshow("Edge map", edgeMap);
     //waitKey;
-
     // PHASE 3: enhacement of edge map with opening for connecting edges
 
     /*
@@ -185,14 +166,15 @@ void HandSegmentator::preprocessImage(){
 /** regionGrowing based on kmeans clustering and edge map
  @param seedSet vector of seed initial points
  @param outputValue value of the output highlighted pixels (default value = 255)
+ @return binary image with the region growing results
  */
-cv::Mat HandSegmentator::advancedRegionGrowing(const vector<pair<int, int>>& seedSet, unsigned char outputValue = 255) {
+Mat HandSegmentator::advancedRegionGrowing(const vector<pair<int, int>>& seedSet, unsigned char outputValue = 255) {
 
-    cv::Mat centers;
-    cv::Mat clust_img = kmeansSegmentationPositionQuantization(5, 2, 2);
+    Mat centers;
+    Mat clust_img = kmeansSegmentationPositionQuantization(5, 2, 2);
 
     //imshow("Clust image", clust_img);
-    //cv::waitKey();
+    //waitKey();
 
     //Analize the clustered colors near the center of the Hand Roi
 
@@ -227,16 +209,16 @@ cv::Mat HandSegmentator::advancedRegionGrowing(const vector<pair<int, int>>& see
         for(int j= x_center - r_x; j<x_center + r_x; j++){
             //Vector color construction
             vector<unsigned char> c = vector<unsigned char>(3);
-            c[0] = clust_img.at<cv::Vec3b>(i,j)[0];
-            c[1] = clust_img.at<cv::Vec3b>(i,j)[1];
-            c[2] = clust_img.at<cv::Vec3b>(i,j)[2];
+            c[0] = clust_img.at<Vec3b>(i,j)[0];
+            c[1] = clust_img.at<Vec3b>(i,j)[1];
+            c[2] = clust_img.at<Vec3b>(i,j)[2];
             main_colors.insert(c);
         }
     }
 
     // boolean array/matrix of visited image pixels, same size as image
     // all the pixels are initialised to false
-    cv::Mat visited_matrix = cv::Mat::zeros(roi.rows, roi.cols, CV_8U);
+    Mat visited_matrix = Mat::zeros(roi.rows, roi.cols, CV_8U);
 
     // List of points to visit
     vector<pair<int, int>> point_list = seedSet;
@@ -265,9 +247,9 @@ cv::Mat HandSegmentator::advancedRegionGrowing(const vector<pair<int, int>>& see
                     {
                         unsigned char neighbour_visited = visited_matrix.at<unsigned char>(i, j);
                         vector<unsigned char> pixel_clustered_color = vector<unsigned char>(3);
-                        pixel_clustered_color[0] = clust_img.at<cv::Vec3b>(i,j)[0];
-                        pixel_clustered_color[1] = clust_img.at<cv::Vec3b>(i,j)[1];
-                        pixel_clustered_color[2] = clust_img.at<cv::Vec3b>(i,j)[2];
+                        pixel_clustered_color[0] = clust_img.at<Vec3b>(i,j)[0];
+                        pixel_clustered_color[1] = clust_img.at<Vec3b>(i,j)[1];
+                        pixel_clustered_color[2] = clust_img.at<Vec3b>(i,j)[2];
 
                         if (!neighbour_visited && main_colors.count(pixel_clustered_color)) { //pixel similarity
                             //pixel similar, we check if it is an edge to indicate that we should not go beyond it
@@ -283,15 +265,18 @@ cv::Mat HandSegmentator::advancedRegionGrowing(const vector<pair<int, int>>& see
     return visited_matrix;
 }
 
-cv::Mat HandSegmentator::handMaskWithARG(){
+/**
+@return RoI ìì hand mask useful for multiplehandSegmentationGrabCutMask
+*/
+Mat HandSegmentator::handMaskWithARG(){
 
-    preprocessImage();
+    preprocessRoI();
 
     //add only the center pixel as seed point for starting the advancedRegionGrowing
     vector<pair<int,int>> seedSet;
     seedSet.push_back(pair<int,int>(roi.rows/2, roi.cols/2));
 
-    cv::Mat result= advancedRegionGrowing(seedSet);
+    Mat result= advancedRegionGrowing(seedSet);
     return result;
 }
 
@@ -302,11 +287,11 @@ cv::Mat HandSegmentator::handMaskWithARG(){
  @param flagTrue  Value to assing to the new mask where pixels are 255 in mask
  @param flagPR_True  Value to assing to the new mask where pixels are 255 in mask PR and 0 in mask
  */
-cv::Mat HandSegmentator::setGrabCutFlag(cv::Mat maskPR, cv::Mat mask, int flagDefault, int flagTrue, int flagPR_True){
+Mat HandSegmentator::setGrabCutFlag(const Mat& maskPR, const Mat& mask, int flagDefault, int flagTrue, int flagPR_True){
 	if (maskPR.size() != mask.size()) {
 		cout<<"Error: different sizes"<<endl;
 	}
-	cv::Mat out(maskPR.size(), CV_8U, cv::Scalar(flagDefault));
+	Mat out(maskPR.size(), CV_8U, Scalar(flagDefault));
 	for(int i = 0; i<maskPR.rows; i++){
 		for(int j = 0; j<maskPR.cols; j++){
 			if( mask.at<unsigned char>(i,j) == 255)
@@ -321,38 +306,10 @@ cv::Mat HandSegmentator::setGrabCutFlag(cv::Mat maskPR, cv::Mat mask, int flagDe
 	return out;
 }
 
-cv::Mat HandSegmentator::multiplehandSegmentationRegionGrowing(){
-
-    Mat out(inputImg.size(), CV_8U, Scalar(0,0,0));
-	Mat colorHands = inputImg.clone();
-    int iterations = 5;
-
-    cout<<"Number of hand on this image: "<<numberHands<<endl;
-
- 	//Single hand segmentation
- 	//Create vector of images cropped in ROI
- 	for(int n = 0; n<numberHands; n++){
- 		//Crop the image using rectangle
- 		Mat handCropped = inputImg(std::get<0>(rects[n]));
-
-        roi = handCropped.clone();
-
-        Mat hand = handMaskWithARG();
-
-        Mat hand_mask(inputImg.size(), CV_8U, Scalar(0,0,0));
-
-        hand.copyTo(hand_mask(std::get<0>(rects[n])));
-
-        bitwise_or(out, hand_mask, out);
-
-    }
-    return out;
-}
-
-/**
+/** main method for segmentation: it merges all
 @return inputImg segmented
 */
-cv::Mat HandSegmentator::multiplehandSegmentationGrabCutMask(){
+Mat HandSegmentator::multiplehandSegmentationGrabCutMask(){
 
     Mat out(inputImg.size(), inputImg.type(),Scalar(0,0,0));
 	Mat colorHands = inputImg.clone();
@@ -364,21 +321,18 @@ cv::Mat HandSegmentator::multiplehandSegmentationGrabCutMask(){
  	//Create vector of images cropped in ROI
  	for(int i = 0; i<numberHands; i++){
  		Mat bwBig(inputImg.size(), CV_8UC1,Scalar(GC_BGD));
- 		//Crop the image using rectangle
- 		Mat handCropped;
- 		handCropped = inputImg(std::get<0>(rects[i]));
+ 		roi = inputImg(std::get<0>(rects[i]));
 		Scalar color = std::get<1>(rects[i]);
  		//imshow("croppedImg", handCropped);
  		//waitKey(0);
 
  		//Segmentation on cropped image
- 		Mat bwSmall(handCropped.size(),CV_8UC1, Scalar(0));
- 		roi = handCropped.clone();
+ 		Mat bwSmall(roi.size(),CV_8UC1, Scalar(0));
  		bwSmall = handMaskWithARG();
 
  		//Morphological dilation for creating larger mask for specifing PR_FGD pixels
  		Mat bwS_PR_FGD;
- 		Mat element = cv::getStructuringElement( cv::MORPH_ELLIPSE, cv::Size(3, 3) );
+ 		Mat element = getStructuringElement( MORPH_ELLIPSE, Size(3, 3) );
  		int opIterations = 4;
  		morphologyEx( bwSmall, bwS_PR_FGD, MORPH_DILATE, element, Point(-1,-1), opIterations );
  		//imshow("Binary Image after dilation", bwS_PR_FGD);
@@ -389,7 +343,7 @@ cv::Mat HandSegmentator::multiplehandSegmentationGrabCutMask(){
  //		waitKey();
 
  		//Superimpose smaller hand mask in a mask of size equal to the original image
- 		bwCombined.copyTo(bwBig(cv::Rect(std::get<0>(rects[i]).tl().x,std::get<0>(rects[i]).tl().y,bwCombined.cols, bwCombined.rows)));
+ 		bwCombined.copyTo(bwBig(Rect(std::get<0>(rects[i]).tl().x,std::get<0>(rects[i]).tl().y,bwCombined.cols, bwCombined.rows)));
  //		imshow("Binary Image combined full size", bwBig);
  //		waitKey();
 
@@ -407,13 +361,13 @@ cv::Mat HandSegmentator::multiplehandSegmentationGrabCutMask(){
 
  		compare(bwBig, GC_FGD, bwBig, CMP_EQ);			// CMP_EQ -> src1 is equal to src2
 
-		createBinaryMask(bwBig);
 		inputImg.copyTo(out,bwBig);
 
+/*
 		//add color
 		for(int i = 0; i < bwBig.rows; i++)
 			for(int j = 0; j < bwBig.cols; j++)
-				if(bwBig.at<unsigned char>(i,j) == 255){
+				if(bwBig.at<unsigned char>(i,j) != 0){
 					if(color[0] != 0)
 						colorHands.at<Vec3b>(i,j)[0] = color[0]/2;
 					if(color[1] != 0)
@@ -423,16 +377,57 @@ cv::Mat HandSegmentator::multiplehandSegmentationGrabCutMask(){
 				}
 
 		//imshow("Segmetation result with colors", colorHands);
-		//waitKey();
+		//waitKey();*/
 
  	}
-    imshow("Segmetation result with colors", colorHands);
-    waitKey();
-    roi.release();
-    preprocessedImage.release();
-    edgeMap.release();
+    //imshow("Segmetation result with colors", colorHands);
+    //waitKey();
+    thresholdingYCrCb(out);
+
 	createBinaryMask(out);
     return out;
+}
+
+/** For Simple thresholding on YCrCb and HSV plane based on skin color
+@param img input image to threshold
+*/
+void HandSegmentator::thresholdingYCrCb(Mat& img){
+    Mat hsv;
+    cvtColor(img,hsv, COLOR_BGR2HSV);
+    inRange(hsv, Scalar(0, 15, 0), Scalar(17,170,255), hsv);
+
+
+    Mat element = getStructuringElement( MORPH_RECT, Size(3, 3) );
+
+    morphologyEx(hsv,hsv, MORPH_OPEN, element, Point(-1, -1), 2);
+
+    //converting from gbr to YCbCr color space
+    Mat ycrcb;
+    cvtColor(img, ycrcb, COLOR_BGR2YCrCb);
+
+    //skin color range for hsv color space
+    inRange(ycrcb, Scalar(0, 135, 85), Scalar(255,180,135), ycrcb);
+
+    morphologyEx(ycrcb,ycrcb, MORPH_OPEN, element, Point(-1, -1), 2);
+
+    Mat finalMask;
+    bitwise_and(ycrcb,hsv, finalMask);
+    medianBlur(finalMask, finalMask, 3);
+
+    morphologyEx(finalMask,finalMask, MORPH_OPEN, element, Point(-1,-1));
+
+    img = finalMask;
+
+    /*For Simple thresholding on YCrCb plane based on skin color
+    int Y_MIN  = 0;
+    int Y_MAX  = 255;
+    int Cr_MIN = 133;
+    int Cr_MAX = 173;
+    int Cb_MIN = 77;
+    int Cb_MAX = 127;
+    //first convert our RGB image to YCrCb
+    cvtColor(img,img,COLOR_BGR2YCrCb);
+    inRange(img,Scalar(Y_MIN,Cr_MIN,Cb_MIN),Scalar(Y_MAX,Cr_MAX,Cb_MAX),img);*/
 }
 
 /**
@@ -447,9 +442,9 @@ void HandSegmentator::createBinaryMask(Mat& imgGC){
                 imgGC.at<unsigned char>(i,j) = 255;
 }
 
-//destroyer
+//destructor for resources deallocation
 HandSegmentator::~HandSegmentator(){
     roi.release();
-    preprocessedImage.release();
+    inputImg.release();
     edgeMap.release();
 }

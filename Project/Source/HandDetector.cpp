@@ -5,7 +5,6 @@
 #include "../Include/HandDetector.hpp"
 #include <opencv2/opencv.hpp>
 #include <iostream>
-#include <fstream>
 #include <cstdlib>
 
 using namespace cv;
@@ -101,7 +100,6 @@ vector<pair<Rect,Scalar>> HandDetector::post_process(Mat& image, vector<Mat>& ou
 		refineBBox(image, bbox);
 		out_boxes.push_back(pair<Rect,Scalar>(bbox,color));
 		draw_box_prediction(image, color, classIDs[ind], confidences[ind], bbox.x, bbox.y, bbox.x+bbox.width, bbox.y+bbox.height); // draw box
-		create_detection_file(bbox.x, bbox.y, bbox.width, bbox.height);
 	}//for
 
 	return out_boxes;
@@ -112,10 +110,10 @@ vector<pair<Rect,Scalar>> HandDetector::post_process(Mat& image, vector<Mat>& ou
 @param bbox detection box
 */
 void HandDetector::refineBBox(const Mat& img, Rect& bbox){
-	//enlarge a little bit the bounding box
+	/*//enlarge a little bit the bounding box
 	constexpr int inflation = 50;
 	bbox += cv::Point(-inflation/2, -inflation/2);
-	bbox += cv::Size(inflation, inflation);
+	bbox += cv::Size(inflation, inflation);*/
 
 	//check cols
 	if(bbox.x < 0)
@@ -166,18 +164,3 @@ vector<String> HandDetector::getOutputLayersNames(const Net& net){
 	}//for
 	return names;
 }//getOutputLayersNames
-
-
-/* create_detection_file
-* This function will create a file that contains the coordinates needed to identify the boxes and to perform after the evaluation
-* @param X_top x-coordinate of the box
-* @param Y_top y-coordinate of the box
-* @param width width of the box
-* @param height height of the box
-*/
-void HandDetector::create_detection_file(int X_top, int Y_top, int width, int height){
-	if (outF.is_open()){
-		outF << X_top << " " << Y_top << " " << width << " " << height << endl;
-	}//if
-	//outF.close();
-}//create_detection_file

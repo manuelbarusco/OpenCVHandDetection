@@ -5,24 +5,20 @@
 #ifndef handSegmentator_hpp
 #define handSegmentator_hpp
 
-#include <stdio.h>
+#include <iostream>
 #include <opencv2/core.hpp>
-#include <opencv2/highgui.hpp>
-#include <opencv2/imgproc.hpp>
-#include <opencv2/imgcodecs.hpp>
 
 class HandSegmentator{
     private:
       cv::Mat inputImg;
-      cv::Mat roi;                             //single hand RoI
-      cv::Mat edgeMap;                         //edgeMap of the hand RoI
-      cv::Mat preprocessedImage;               //processed RoI image for image segmentation
-  	  int numberHands = 0;                     //number of hand detections in the input image
+      cv::Mat roi;                                                   //single hand RoI
+      cv::Mat edgeMap;                                               //edgeMap of the hand RoI
+  	  int numberHands = 0;                                           //number of hand detections in the input image
   	  std::vector<std::pair<cv::Rect,cv::Scalar>> rects;             //hand detections in the input image
 
       //method for RoI image preprocessing before segmentation
 
-      void preprocessImage();
+      void preprocessRoI();
 
       //internal methods for hand segmentation
 
@@ -32,23 +28,22 @@ class HandSegmentator{
 
       cv::Mat kmeansSegmentationPositionQuantization(int K, float weighX,float weightY);
 
-      cv:: Mat thresholdingYCrCb();
+      void thresholdingYCrCb(cv::Mat& img);
 
-  	  cv::Mat setGrabCutFlag(cv::Mat maskPR, cv::Mat mask, int flagDefault, int flagTrue, int flagPR_True);
+  	  cv::Mat setGrabCutFlag(const cv::Mat& maskPR, const cv::Mat& mask, int flagDefault, int flagTrue, int flagPR_True);
 
       cv::Mat handMaskWithARG();
+
+      void createBinaryMask(cv::Mat& outGC);
 
 
     public:
       //constructor
-      HandSegmentator(const cv::Mat& iImg, const int nHands, std::vector<std::pair<cv::Rect,cv::Scalar>> );
+      HandSegmentator(const cv::Mat& iImg, const int nHands, const std::vector<std::pair<cv::Rect,cv::Scalar>> );
 
       cv::Mat multiplehandSegmentationGrabCutMask();
 
-      void createBinaryMask(cv::Mat& outGC);
-
-      cv::Mat multiplehandSegmentationRegionGrowing();
-
+      //destructor
       ~HandSegmentator();
 };
 
