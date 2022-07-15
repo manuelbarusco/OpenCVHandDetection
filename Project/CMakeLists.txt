@@ -1,0 +1,7 @@
+cmake_minimum_required(VERSION 2.8)
+project( OpenCVHandDetectionAndSegmentation )
+find_package( OpenCV REQUIRED )
+include_directories( ${OpenCV_INCLUDE_DIRS} )
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "Product")
+add_executable( main Source/HandDetector.cpp Source/HandSegmentator.cpp Source/Evaluator.cpp Source/main.cpp)
+target_link_libraries( main ${OpenCV_LIBS} )

@@ -60,8 +60,7 @@ void runDetector(const string& pathFolder){
       vector<Mat> outs = hd.forward_process(img);
 
       vector<pair<Rect,Scalar>> outDetections = hd.post_process(img, outs);
-
-      cout << outDetections.size();
+      
       imshow("Detection", img);
       waitKey();
     }
