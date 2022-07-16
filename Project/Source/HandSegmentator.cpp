@@ -213,6 +213,7 @@ Mat HandSegmentator::advancedRegionGrowing(const vector<pair<int, int>>& seedSet
             c[1] = clust_img.at<Vec3b>(i,j)[1];
             c[2] = clust_img.at<Vec3b>(i,j)[2];
             main_colors.insert(c);
+
         }
     }
 

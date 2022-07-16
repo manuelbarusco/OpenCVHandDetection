@@ -60,7 +60,7 @@ void runDetector(const string& pathFolder){
       vector<Mat> outs = hd.forward_process(img);
 
       vector<pair<Rect,Scalar>> outDetections = hd.post_process(img, outs);
-      
+
       imshow("Detection", img);
       waitKey();
     }
@@ -89,6 +89,10 @@ void runSegmentator(const string& pathFolder){
         Mat out = s.multiplehandSegmentationGrabCutMask();
         imshow("Segmentation", out);
         waitKey();
+
+        imgD.release();
+        imgS.release();
+        out.release();
     }
 }
 
@@ -133,20 +137,21 @@ void runSegmentatorWithEvaluator(const string& pathFolder, const string& gtPath)
     Evaluator e = Evaluator(gtPath, "../Test/output_evaluation/resultsSegmentation.txt");
 
     for(int i = 0; i < imgs.size(); i++){
-      Mat img = imread(imgs[i]);
+        Mat img = imread(imgs[i]);
+        Mat imgS = img.clone();
 
-      vector<Mat> outs = hd.forward_process(img);
+        vector<Mat> outs = hd.forward_process(img);
 
-      vector<pair<Rect,Scalar>> outDetections = hd.post_process(img, outs);
+        vector<pair<Rect,Scalar>> outDetections = hd.post_process(img, outs);
 
-      HandSegmentator s = HandSegmentator(img, outDetections.size(), outDetections);
-      Mat outSegmentation = s.multiplehandSegmentationGrabCutMask();
+        HandSegmentator s = HandSegmentator(imgS, outDetections.size(), outDetections);
+        Mat outSegmentation = s.multiplehandSegmentationGrabCutMask();
 
-      string imgNameWithFormat = imgs[i].substr(imgs[i].find_last_of("/")+1,imgs[i].size()-1);
-      imwrite("../Test/output_segmentation/"+imgNameWithFormat, outSegmentation);
+        string imgNameWithFormat = imgs[i].substr(imgs[i].find_last_of("/")+1,imgs[i].size()-1);
+        imwrite("../Test/output_segmentation/"+imgNameWithFormat, outSegmentation);
 
-      img.release();
-      outSegmentation.release();
+        img.release();
+        outSegmentation.release();
     }
 
     glob("../Test/output_segmentation", imgs, false);
