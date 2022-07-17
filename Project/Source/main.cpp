@@ -76,23 +76,25 @@ void runSegmentator(const string& pathFolder){
     HandDetector hd = configureDetector();
 
     for(int i = 0; i < imgs.size(); i++){
-        Mat imgD = imread(imgs[i]);
-        Mat imgS = imgD.clone();
-        vector<Mat> outs = hd.forward_process(imgD);
+        if(i>= 19){
+            Mat imgD = imread(imgs[i]);
+            Mat imgS = imgD.clone();
+            vector<Mat> outs = hd.forward_process(imgD);
 
-        vector<pair<Rect,Scalar>> outDetections = hd.post_process(imgD, outs);
-        imshow("Detection", imgD);
-        waitKey();
+            vector<pair<Rect,Scalar>> outDetections = hd.post_process(imgD, outs);
+            imshow("Detection", imgD);
+            waitKey();
 
-        HandSegmentator s = HandSegmentator(imgS, outDetections.size(), outDetections);
+            HandSegmentator s = HandSegmentator(imgS, outDetections.size(), outDetections);
 
-        Mat out = s.multiplehandSegmentationGrabCutMask();
-        imshow("Segmentation", out);
-        waitKey();
+            Mat out = s.multiplehandSegmentationGrabCutMask();
+            imshow("Segmentation", out);
+            waitKey();
 
-        imgD.release();
-        imgS.release();
-        out.release();
+            imgD.release();
+            imgS.release();
+            out.release();
+        }
     }
 }
 
@@ -140,6 +142,7 @@ void runSegmentatorWithEvaluator(const string& pathFolder, const string& gtPath)
         Mat img = imread(imgs[i]);
         Mat imgS = img.clone();
 
+        cout << "Segmenting image: " << imgs[i] << "\n";
         vector<Mat> outs = hd.forward_process(img);
 
         vector<pair<Rect,Scalar>> outDetections = hd.post_process(img, outs);
@@ -151,6 +154,7 @@ void runSegmentatorWithEvaluator(const string& pathFolder, const string& gtPath)
         imwrite("../Test/output_segmentation/"+imgNameWithFormat, outSegmentation);
 
         img.release();
+        imgS.release();
         outSegmentation.release();
     }
 

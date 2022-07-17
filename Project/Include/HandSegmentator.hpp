@@ -6,6 +6,7 @@
 #define handSegmentator_hpp
 
 #include <iostream>
+#include <opencv2/opencv.hpp>
 #include <opencv2/core.hpp>
 
 class HandSegmentator{
@@ -22,7 +23,7 @@ class HandSegmentator{
 
       //internal methods for hand segmentation
 
-      cv::Mat advancedRegionGrowing(const std::vector<std::pair<int, int>>& seedSet, unsigned char outputValue);
+      cv::Mat advancedRegionGrowing(unsigned char outputValue);
 
       void minMaxNormalization(cv::Mat& img, float weightX, float weightY, bool treeChannels);
 

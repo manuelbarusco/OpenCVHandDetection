@@ -126,12 +126,10 @@ double Evaluator::singleIntersectionOverUnion(const Rect &det, const Rect &bb){
 void Evaluator::pixelAccuracy(const string& imgFileName, const Mat& maskSegm){
 
     string imgNameWithFormat = imgFileName.substr(imgFileName.find_last_of("/")+1,imgFileName.size()-1);
-    cout << imgNameWithFormat << "\n";
 
     string imgName = imgNameWithFormat.substr(0,imgNameWithFormat.find("."));
-    cout << imgName << "\n";
 
-    cout << groundTruthDirectory+"/"+imgName+".png" << "\n";
+    cout << "Computing Pixel Accuracy for image: " << imgName << "\n";
 
     //open the ground truth image
     Mat imgGT = imread(groundTruthDirectory+"/"+imgName+".png", IMREAD_GRAYSCALE);

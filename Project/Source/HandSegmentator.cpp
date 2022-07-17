@@ -6,6 +6,7 @@
 #include "../Include/HandSegmentator.hpp"
 #include <opencv2/core.hpp>
 #include <opencv2/imgproc.hpp>
+#include <opencv2/opencv.hpp>
 #include <iostream>
 #include <set>
 
@@ -136,8 +137,13 @@ void HandSegmentator::preprocessRoI(){
     //imshow("Blurred", preprocessedImage);
     //waitKey();
 
-    // PHASE 2: EDGE MAP extraction with Canny
+   // PHASE 2: EDGE MAP extraction with Canny
     Canny(roi, edgeMap , 10, 150);
+
+    //imshow("Roi", roi);
+    //waitKey();
+    //imshow("Canny", edgeMap);
+    //waitKey();
     //imshow("Edge map", edgeMap);
     //waitKey;
     // PHASE 3: enhacement of edge map with opening for connecting edges
@@ -164,11 +170,10 @@ void HandSegmentator::preprocessRoI(){
 
 
 /** regionGrowing based on kmeans clustering and edge map
- @param seedSet vector of seed initial points
  @param outputValue value of the output highlighted pixels (default value = 255)
  @return binary image with the region growing results
  */
-Mat HandSegmentator::advancedRegionGrowing(const vector<pair<int, int>>& seedSet, unsigned char outputValue = 255) {
+Mat HandSegmentator::advancedRegionGrowing(unsigned char outputValue = 255) {
 
     Mat centers;
     Mat clust_img = kmeansSegmentationPositionQuantization(5, 2, 2);
@@ -194,15 +199,19 @@ Mat HandSegmentator::advancedRegionGrowing(const vector<pair<int, int>>& seedSet
     double col_row_ratio = static_cast<double>(clust_img.cols) / clust_img.rows;
     double row_col_ratio = static_cast<double>(clust_img.rows) / clust_img.cols;
 
-    if(col_row_ratio < 0.40){
-        r_x = clust_img.cols / 5;
+    if(col_row_ratio < 0.75){
+        r_x = clust_img.cols / 30;
         r_y = clust_img.rows / 10;
-    } else if (row_col_ratio < 0.40){
+    } else if (row_col_ratio < 0.75){
         r_x = clust_img.cols / 10;
-        r_y = clust_img.rows / 5;
+        r_y = clust_img.rows / 30;
     }
 
+    //cout << r_x << "\n";
+    //cout << r_y << "\n";
+
     set<vector<unsigned char>> main_colors = set<vector<unsigned char>>(); //set of clustered colors near the hand RoI center
+    vector<pair<int,int>> point_list;
 
     //construction of the set of clustered colors near the hand RoI center
     for(int i= y_center - r_y; i<y_center + r_y; i++){
@@ -214,15 +223,14 @@ Mat HandSegmentator::advancedRegionGrowing(const vector<pair<int, int>>& seedSet
             c[2] = clust_img.at<Vec3b>(i,j)[2];
             main_colors.insert(c);
 
+            point_list.push_back(pair<int,int>(i, j));
+
         }
     }
 
     // boolean array/matrix of visited image pixels, same size as image
     // all the pixels are initialised to false
     Mat visited_matrix = Mat::zeros(roi.rows, roi.cols, CV_8U);
-
-    // List of points to visit
-    vector<pair<int, int>> point_list = seedSet;
 
     while ( ! point_list.empty()) {
         // Get a point from the list
@@ -262,7 +270,8 @@ Mat HandSegmentator::advancedRegionGrowing(const vector<pair<int, int>>& seedSet
             }
         }
     }
-
+    //imshow("RG MASK", visited_matrix);
+    //waitKey();
     return visited_matrix;
 }
 
@@ -273,11 +282,7 @@ Mat HandSegmentator::handMaskWithARG(){
 
     preprocessRoI();
 
-    //add only the center pixel as seed point for starting the advancedRegionGrowing
-    vector<pair<int,int>> seedSet;
-    seedSet.push_back(pair<int,int>(roi.rows/2, roi.cols/2));
-
-    Mat result= advancedRegionGrowing(seedSet);
+    Mat result= advancedRegionGrowing();
     return result;
 }
 
@@ -315,8 +320,6 @@ Mat HandSegmentator::multiplehandSegmentationGrabCutMask(){
     Mat out(inputImg.size(), inputImg.type(),Scalar(0,0,0));
 	Mat colorHands = inputImg.clone();
  	int iterations = 5;
-
- 	cout<<"Number of hand on this image: "<<numberHands<<endl;
 
  	//Single hand segmentation
  	//Create vector of images cropped in ROI
