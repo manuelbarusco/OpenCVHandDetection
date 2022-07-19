@@ -6,7 +6,7 @@
 #include "../Include/HandSegmentator.hpp"
 #include <opencv2/core.hpp>
 #include <opencv2/imgproc.hpp>
-#include <opencv2/opencv.hpp>
+#include <opencv2/highgui.hpp>
 #include <iostream>
 #include <set>
 
@@ -24,7 +24,7 @@ HandSegmentator::HandSegmentator(const Mat& iImg, const int nHands, const vector
     rects = r;
 }
 
-/** Min-Max normaliaztion for kmeans based on pixel color and position
+/** Min-Max normalization for kmeans based on pixel color and position
 @param img input img
 @param weightX weight for the x-position component in the feature vector
 @param weightY weight for the y-position component in the feature vector
@@ -244,16 +244,12 @@ Mat HandSegmentator::advancedRegionGrowing(unsigned char outputValue = 255) {
         visited_matrix.at<unsigned char>(row, col) = outputValue;
 
         // for each neighbour of this_point
-        for (int i = row - 1; i <= row + 1; i++)
-        {
+        for (int i = row - 1; i <= row + 1; i++) {
             // vertical index is valid
-            if (0 <= i && i < inputImg.rows)
-            {
-                for (int j = col - 1; j <= col + 1; j++)
-                {
+            if (0 <= i && i < inputImg.rows) {
+                for (int j = col - 1; j <= col + 1; j++) {
                     // hozirontal index is valid
-                    if (0 <= j && j < inputImg.cols)
-                    {
+                    if (0 <= j && j < inputImg.cols) {
                         unsigned char neighbour_visited = visited_matrix.at<unsigned char>(i, j);
                         vector<unsigned char> pixel_clustered_color = vector<unsigned char>(3);
                         pixel_clustered_color[0] = clust_img.at<Vec3b>(i,j)[0];
@@ -348,28 +344,28 @@ Mat HandSegmentator::multiplehandSegmentationGrabCutMask(){
  		roi = inputImg(std::get<0>(rects[i]));
 		Scalar color = std::get<1>(rects[i]);
 
-		//Test Segmetation skin 
+		//Test Segmetation skin
 		Mat skin = roi.clone();
 		thresholdingYCrCb(skin);
 //		imshow("Segmentation skin", skin);
 //		waitKey();
-		
+
  		//Segmentation on cropped image
  		Mat bwSmall(roi.size(),CV_8UC1, Scalar(0));
  		bwSmall = handMaskWithARG();
 //		imshow("Segmentation ARG", bwSmall);
 //		waitKey();
-		
+
 		//Morphological erosion for creating smaller mask (more likely to be foregorund pixels)
 		Mat bwS_PR_FGD;
 		Mat element = getStructuringElement( MORPH_ELLIPSE, Size(3, 3) );
 		int opIterations = 4;
 		morphologyEx( bwSmall, bwSmall, MORPH_ERODE, element, Point(-1,-1), opIterations );
-		
+
 		//Compine two Segmentation results
 		combineSkinAndARG(skin, bwSmall);
 	//	testGrabCutMask(bwSmall);
- 		
+
 
  		//Mat bwCombined = setGrabCutFlag(bwS_PR_FGD, bwSmall, GC_PR_BGD, GC_FGD, GC_PR_FGD); //bwSmall sure FG
  //		imshow("Binary Image combined", bwCombined);
@@ -413,13 +409,12 @@ Mat HandSegmentator::multiplehandSegmentationGrabCutMask(){
  	}
 //    imshow("Segmetation result with colors", colorHands);
 //    waitKey();
-	
+
 //	imshow("Segmetation result", out);
 //	waitKey();
    // thresholdingYCrCb(out);
 
 	createBinaryMask(out);
-	destroyAllWindows();
     return out;
 }
 
@@ -504,4 +499,8 @@ HandSegmentator::~HandSegmentator(){
     roi.release();
     inputImg.release();
     edgeMap.release();
+}
+
+int main(){
+    return 0;
 }
