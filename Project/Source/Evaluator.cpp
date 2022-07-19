@@ -94,7 +94,7 @@ void Evaluator::intersectionOverUnion(const string& imgFileName, const vector<Re
         //for every ground truth bounding box calculate the intesection over union between the box and every detector bounding box found in the image
         vector<double> iousLocal = vector<double>();
         for(int j = 0; j < detections.size(); j++){
-            double iou = singleIntersectionOverUnion(detections[i], gtBB[j]);
+            double iou = singleIntersectionOverUnion(detections[j], gtBB[i]);
             iousLocal.push_back(iou);
         }
 
@@ -104,8 +104,8 @@ void Evaluator::intersectionOverUnion(const string& imgFileName, const vector<Re
         //print in the output file the IoU
         outputFile << "Image: " << imgFileName <<
                       ", Ground Truth Bounding Box: Coordinates Top Left Pixel: (" << gtBB[i].tl().x << "," << gtBB[i].tl().y << ")" <<
-                      ", Height: " << gtBB[i].height <<
                       ", Width: " << gtBB[i].width <<
+                      ", Height: " << gtBB[i].height <<
                       ", IoU: " << iou << "\n";
     }
 
