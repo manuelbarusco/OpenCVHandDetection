@@ -7,6 +7,7 @@
 #include <iostream>
 #include <fstream>
 #include <opencv2/opencv.hpp>
+#include <sys/stat.h>
 
 using namespace std;
 using namespace cv;
@@ -85,7 +86,7 @@ void runSegmentator(const string& pathFolder){
             imshow("Detection", imgD);
             waitKey();
 
-            HandSegmentator s = HandSegmentator(imgS, outDetections.size(), outDetections);
+            HandSegmentator s (imgS, outDetections.size(), outDetections);
 
             Mat out = s.multiplehandSegmentationGrabCutMask();
             imshow("Segmentation", out);
@@ -107,7 +108,7 @@ void runDetectorWithEvaluator(const string& pathFolder, const string& gtPath){
     glob(pathFolder, imgs, false);
 
     HandDetector hd = configureDetector();
-    Evaluator e = Evaluator(gtPath, "../Test/output_evaluation/resultsDetection.txt");
+    Evaluator e (gtPath, "../Test/output_evaluation/resultsDetection.txt");
 
     for(int i = 0; i < imgs.size(); i++){
       Mat img = imread(imgs[i]);
@@ -136,7 +137,7 @@ void runSegmentatorWithEvaluator(const string& pathFolder, const string& gtPath)
     glob(pathFolder, imgs, false);
 
     HandDetector hd = configureDetector();
-    Evaluator e = Evaluator(gtPath, "../Test/output_evaluation/resultsSegmentation.txt");
+    Evaluator e (gtPath, "../Test/output_evaluation/resultsSegmentation.txt");
 
     for(int i = 0; i < imgs.size(); i++){
         Mat img = imread(imgs[i]);
@@ -147,7 +148,7 @@ void runSegmentatorWithEvaluator(const string& pathFolder, const string& gtPath)
 
         vector<pair<Rect,Scalar>> outDetections = hd.post_process(img, outs);
 
-        HandSegmentator s = HandSegmentator(imgS, outDetections.size(), outDetections);
+        HandSegmentator s (imgS, outDetections.size(), outDetections);
         Mat outSegmentation = s.multiplehandSegmentationGrabCutMask();
 
         string imgNameWithFormat = imgs[i].substr(imgs[i].find_last_of("/")+1,imgs[i].size()-1);
@@ -172,6 +173,14 @@ int userMain(){
     cout << "Please insert the input images directory path:";
     string path;
     cin >> path;
+
+    /*std::filesystem::path::path_object (path);
+    if(!std::filesystem::exists(path))
+        cerr << "Input images directory path is wrong or does not exists";*/
+
+    struct stat buffer;
+    if(!((stat (path.c_str(), &buffer)) == 0))
+        cerr << "Input images directory path is wrong or does not exists";
 
     //selection of the user execution mode
 

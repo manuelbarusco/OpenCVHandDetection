@@ -1,6 +1,6 @@
 //HandSegmentator.cpp
 
-//Authors: Manuel Barusco, Simone Gregori
+//@author: Manuel Barusco, Simone Gregori
 
 
 #include "../Include/HandSegmentator.hpp"

@@ -50,6 +50,9 @@ class Evaluator{
                 ImpossibleWriteFile();
         };
 
+        //destructor for resources deallocation
+        ~Evaluator();
+
 };
 
 #endif /* Evaluator_hpp */

@@ -170,4 +170,10 @@ void Evaluator::pixelAccuracy(const string& imgFileName, const Mat& maskSegm){
                   "Pixel Accuracy (Hand): " << hand_pixel_accuracy <<
                   "Pixel Accuracy (No Hand): " << no_hand_pixel_accuracy << "\n";
 
+    imgGT.release();
 }//pixelAccuracy
+
+//destructor for resources deallocation
+Evaluator::~Evaluator(){
+    outputFile.close();
+}
