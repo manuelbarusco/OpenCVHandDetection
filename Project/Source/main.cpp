@@ -6,8 +6,10 @@
 #include <stdio.h>
 #include <iostream>
 #include <fstream>
-#include <opencv2/opencv.hpp>
 #include <sys/stat.h>
+#include <opencv2/core.hpp>
+#include <opencv2/imgproc.hpp>
+#include <opencv2/highgui.hpp>
 
 using namespace std;
 using namespace cv;
@@ -189,7 +191,7 @@ int userMain(){
          << "- s: detection and segmentation" << "\n"
          << "- de: detection with evaluation" << "\n"
          << "- se: segmentation with evaluation" << "\n"
-         << "Insert the execution mode (d, ds, de or se):";
+         << "Insert the execution mode (d, s, de or se):";
     string mode;
     cin >> mode;
 

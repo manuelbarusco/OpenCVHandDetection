@@ -500,7 +500,3 @@ HandSegmentator::~HandSegmentator(){
     inputImg.release();
     edgeMap.release();
 }
-
-int main(){
-    return 0;
-}
