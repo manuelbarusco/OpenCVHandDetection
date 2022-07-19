@@ -79,7 +79,7 @@ void runSegmentator(const string& pathFolder){
     HandDetector hd = configureDetector();
 
     for(int i = 0; i < imgs.size(); i++){
-        if(i>= 19){
+        if(i>= 26){
             Mat imgD = imread(imgs[i]);
             Mat imgS = imgD.clone();
             vector<Mat> outs = hd.forward_process(imgD);

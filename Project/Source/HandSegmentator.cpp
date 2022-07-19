@@ -68,13 +68,13 @@ void HandSegmentator::minMaxNormalization(Mat &img, float weightX, float weightY
 }
 
 /** method for k-means clustering based on pixel color and position
-@param k number of clusters
+@param K number of clusters
 @param weightX weight for the x-position component in the feature vector
 @param weightY weight for the y-position component in the feature vector
 @return img segmented
 */
 Mat HandSegmentator::kmeansSegmentationPositionQuantization(int K, float weightX,float weightY){
-    Mat labels, centers;
+    Mat labels, centers,temp;
 
     //Conver to float for kmeans
     roi.convertTo(roi, CV_32FC3, 1.0/255.0);
@@ -102,6 +102,8 @@ Mat HandSegmentator::kmeansSegmentationPositionQuantization(int K, float weightX
             out.at<Vec3f>(y,x)[2] = centers.at<float>(cluster_idx, 2)*255;
       }
     out.convertTo(out, CV_8UC3);
+	//Convert roi back to unsigned char
+	roi.convertTo(roi, CV_8UC3, 255);
     return out;
 }
 
@@ -282,33 +284,12 @@ Mat HandSegmentator::handMaskWithARG(){
     return result;
 }
 
-/** setGrabCutFlag
- @param maskPR binary mask where 255 represent probably foreground
- @param mask binary mask where 255 represent for sure foreground pixels
- @param flagDefault Value to assing to the new mask where pixels are 0 in maskPR
- @param flagTrue  Value to assing to the new mask where pixels are 255 in mask
- @param flagPR_True  Value to assing to the new mask where pixels are 255 in mask PR and 0 in mask
+/** combines two binary mask and sets the GrabCut flags
+ @param skin first binary mask to combine
+ @param arg second mask to combine with the first
  */
-Mat HandSegmentator::setGrabCutFlag(const Mat& maskPR, const Mat& mask, int flagDefault, int flagTrue, int flagPR_True){
-	if (maskPR.size() != mask.size()) {
-		cout<<"Error: different sizes"<<endl;
-	}
-	Mat out(maskPR.size(), CV_8U, Scalar(flagDefault));
-	for(int i = 0; i<maskPR.rows; i++){
-		for(int j = 0; j<maskPR.cols; j++){
-			if( mask.at<unsigned char>(i,j) == 255)
-				out.at<unsigned char>(i,j) = flagTrue;
-			else{
-				if (maskPR.at<unsigned char>(i,j) == 255 && mask.at<unsigned char>(i,j) == 0) {
-					out.at<unsigned char>(i,j) = flagPR_True;
-				}
-			}
-		}
-	}
-	return out;
-}
-
 void HandSegmentator::combineSkinAndARG(const Mat& skin, Mat& arg){
+	int th = 40;
 	if (skin.size() != arg.size()) {
 		cout<<"Error: different sizes"<<endl;
 	}
@@ -323,6 +304,11 @@ void HandSegmentator::combineSkinAndARG(const Mat& skin, Mat& arg){
 				else{
 					arg.at<unsigned char>(i,j) = GC_PR_BGD;
 				}
+			}
+			
+			//Set to BGD very dark pixels
+			if((int)roi.at<Vec3b>(i,j)[0]<th && (int)roi.at<Vec3b>(i,j)[1]<th && (int)roi.at<Vec3b>(i,j)[2]<th){
+				arg.at<unsigned char>(i,j) = GC_BGD;
 			}
 		}
 	}
@@ -346,16 +332,25 @@ Mat HandSegmentator::multiplehandSegmentationGrabCutMask(){
 
 		//Test Segmetation skin
 		Mat skin = roi.clone();
-		thresholdingYCrCb(skin);
+		
+		if (!isBlackAndWhite(inputImg)) {
+			thresholdingYCrCb(skin);
+		}
+		else{
+			//Segmentation skin on black and white image
+			cout<<"This is BN image"<<endl;
+			cvtColor(roi,skin, COLOR_BGRA2GRAY);
+			threshold(skin,skin, 0, 255, THRESH_BINARY | THRESH_OTSU);
+		}
 //		imshow("Segmentation skin", skin);
 //		waitKey();
 
  		//Segmentation on cropped image
  		Mat bwSmall(roi.size(),CV_8UC1, Scalar(0));
- 		bwSmall = handMaskWithARG();
+		bwSmall = handMaskWithARG();
 //		imshow("Segmentation ARG", bwSmall);
 //		waitKey();
-
+		
 		//Morphological erosion for creating smaller mask (more likely to be foregorund pixels)
 		Mat bwS_PR_FGD;
 		Mat element = getStructuringElement( MORPH_ELLIPSE, Size(3, 3) );
@@ -364,12 +359,7 @@ Mat HandSegmentator::multiplehandSegmentationGrabCutMask(){
 
 		//Compine two Segmentation results
 		combineSkinAndARG(skin, bwSmall);
-	//	testGrabCutMask(bwSmall);
-
-
- 		//Mat bwCombined = setGrabCutFlag(bwS_PR_FGD, bwSmall, GC_PR_BGD, GC_FGD, GC_PR_FGD); //bwSmall sure FG
- //		imshow("Binary Image combined", bwCombined);
- //		waitKey();
+//		testGrabCutMask(bwSmall);
 
  		//Superimpose smaller hand mask in a mask of size equal to the original image
 		bwSmall.copyTo(bwBig(Rect(std::get<0>(rects[i]).tl().x,std::get<0>(rects[i]).tl().y,bwSmall.cols, bwSmall.rows)));
@@ -412,10 +402,24 @@ Mat HandSegmentator::multiplehandSegmentationGrabCutMask(){
 
 //	imshow("Segmetation result", out);
 //	waitKey();
-   // thresholdingYCrCb(out);
-
+	
+	destroyAllWindows();
 	createBinaryMask(out);
     return out;
+}
+
+/**  Funcion that check if an 3 channels image is in black and white color 
+ @param img input image to test 
+ */
+int HandSegmentator::isBlackAndWhite(Mat& img){
+	int BW_img = 1;
+	for(int i = 0; i < img.rows/3; i++){
+		for(int j = 0; j < img.cols/3; j++){
+			if (img.at<Vec3b>(i,j)[0] != img.at<Vec3b>(i,j)[1]) 
+					BW_img = 0;
+		}
+	}
+	return BW_img;
 }
 
 //Only for test TODO: delete

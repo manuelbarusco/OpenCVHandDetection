@@ -16,7 +16,7 @@ HandDetector::HandDetector(const Net& p_net, const vector<string>& c_names) {
 	net = p_net;
 	class_names = c_names;
 	//Color to assing to bounging box and segmented hands
-	colors = { Scalar(255,178,0), Scalar(0,0,255), Scalar(255,0,0), Scalar(0,0,255), Scalar(76,153,0) };
+	colors = { Scalar(255,178,0), Scalar(0,0,255), Scalar(255,0,0), Scalar(76,153,0), Scalar(0,255,0)};
 }//HandDetector
 
 /* forward_process()

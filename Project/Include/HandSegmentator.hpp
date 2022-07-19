@@ -34,14 +34,14 @@ class HandSegmentator{
       //method for simple segmentation based on skin color thresholding
       void thresholdingYCrCb(cv::Mat& img);
 
-      //method for grabcut flags setting
-  	  cv::Mat setGrabCutFlag(const cv::Mat& maskPR, const cv::Mat& mask, int flagDefault, int flagTrue, int flagPR_True);
-
 	  void combineSkinAndARG(const cv::Mat& skin, cv::Mat& arg);
 
       //method that returns the final binary mask from the input image
       void createBinaryMask(cv::Mat& outGC);
-
+	
+	  //method that recognizes if img is black and white 
+	  int isBlackAndWhite(cv::Mat& img);
+	
 	  void testGrabCutMask(cv::Mat& m); //Only for test
 
 
