@@ -2,7 +2,7 @@
 
 //Author: Riccardo Rampon
 
-#include "HandDetector.h"
+#include "HandDetector.hpp"
 
 using namespace cv;
 using namespace cv::dnn;

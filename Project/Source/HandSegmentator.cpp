@@ -312,6 +312,26 @@ Mat HandSegmentator::setGrabCutFlag(const Mat& maskPR, const Mat& mask, int flag
 	return out;
 }
 
+void HandSegmentator::combineSkinAndARG(const Mat& skin, Mat& arg){
+	if (skin.size() != arg.size()) {
+		cout<<"Error: different sizes"<<endl;
+	}
+	for(int i = 0; i<arg.rows; i++){
+		for(int j = 0; j<arg.cols; j++){
+			if( skin.at<unsigned char>(i,j) == 255 && arg.at<unsigned char>(i,j) == 255)
+				arg.at<unsigned char>(i,j) = GC_FGD;
+			else{
+				if (skin.at<unsigned char>(i,j) != arg.at<unsigned char>(i,j)) {
+					arg.at<unsigned char>(i,j) = GC_PR_FGD;
+				}
+				else{
+					arg.at<unsigned char>(i,j) = GC_PR_BGD;
+				}
+			}
+		}
+	}
+}
+
 /** main method for segmentation: it merges all
 @return inputImg segmented
 */
@@ -327,29 +347,36 @@ Mat HandSegmentator::multiplehandSegmentationGrabCutMask(){
  		Mat bwBig(inputImg.size(), CV_8UC1,Scalar(GC_BGD));
  		roi = inputImg(std::get<0>(rects[i]));
 		Scalar color = std::get<1>(rects[i]);
- 		//imshow("croppedImg", handCropped);
- 		//waitKey(0);
 
+		//Test Segmetation skin 
+		Mat skin = roi.clone();
+		thresholdingYCrCb(skin);
+//		imshow("Segmentation skin", skin);
+//		waitKey();
+		
  		//Segmentation on cropped image
  		Mat bwSmall(roi.size(),CV_8UC1, Scalar(0));
  		bwSmall = handMaskWithARG();
+//		imshow("Segmentation ARG", bwSmall);
+//		waitKey();
+		
+		//Morphological erosion for creating smaller mask (more likely to be foregorund pixels)
+		Mat bwS_PR_FGD;
+		Mat element = getStructuringElement( MORPH_ELLIPSE, Size(3, 3) );
+		int opIterations = 4;
+		morphologyEx( bwSmall, bwSmall, MORPH_ERODE, element, Point(-1,-1), opIterations );
+		
+		//Compine two Segmentation results
+		combineSkinAndARG(skin, bwSmall);
+	//	testGrabCutMask(bwSmall);
+ 		
 
- 		//Morphological dilation for creating larger mask for specifing PR_FGD pixels
- 		Mat bwS_PR_FGD;
- 		Mat element = getStructuringElement( MORPH_ELLIPSE, Size(3, 3) );
- 		int opIterations = 4;
- 		morphologyEx( bwSmall, bwS_PR_FGD, MORPH_DILATE, element, Point(-1,-1), opIterations );
- 		//imshow("Binary Image after dilation", bwS_PR_FGD);
- 		//waitKey();
-
- 		Mat bwCombined = setGrabCutFlag(bwS_PR_FGD, bwSmall, GC_PR_BGD, GC_FGD, GC_PR_FGD);
+ 		//Mat bwCombined = setGrabCutFlag(bwS_PR_FGD, bwSmall, GC_PR_BGD, GC_FGD, GC_PR_FGD); //bwSmall sure FG
  //		imshow("Binary Image combined", bwCombined);
  //		waitKey();
 
  		//Superimpose smaller hand mask in a mask of size equal to the original image
- 		bwCombined.copyTo(bwBig(Rect(std::get<0>(rects[i]).tl().x,std::get<0>(rects[i]).tl().y,bwCombined.cols, bwCombined.rows)));
- //		imshow("Binary Image combined full size", bwBig);
- //		waitKey();
+		bwSmall.copyTo(bwBig(Rect(std::get<0>(rects[i]).tl().x,std::get<0>(rects[i]).tl().y,bwSmall.cols, bwSmall.rows)));
 
  		//applay GrabCut alg.
  		Mat bgd,fgd;
@@ -367,7 +394,6 @@ Mat HandSegmentator::multiplehandSegmentationGrabCutMask(){
 
 		inputImg.copyTo(out,bwBig);
 
-/*
 		//add color
 		for(int i = 0; i < bwBig.rows; i++)
 			for(int j = 0; j < bwBig.cols; j++)
@@ -380,17 +406,44 @@ Mat HandSegmentator::multiplehandSegmentationGrabCutMask(){
 						colorHands.at<Vec3b>(i,j)[2] = color[2]/2;
 				}
 
-		//imshow("Segmetation result with colors", colorHands);
-		//waitKey();*/
-
+//		imshow("Segmetation result with colors", colorHands);
+//		waitKey();
+		bwBig.release();
+		bwSmall.release();
  	}
-    //imshow("Segmetation result with colors", colorHands);
-    //waitKey();
-    thresholdingYCrCb(out);
+//    imshow("Segmetation result with colors", colorHands);
+//    waitKey();
+	
+//	imshow("Segmetation result", out);
+//	waitKey();
+   // thresholdingYCrCb(out);
 
 	createBinaryMask(out);
+	destroyAllWindows();
     return out;
 }
+
+//Only for test TODO: delete
+void HandSegmentator::testGrabCutMask(Mat& m){
+	Mat temp = m.clone();
+	for(int i = 0; i < m.rows; i++){
+		for(int j = 0; j < m.cols; j++){
+			if(m.at<unsigned char>(i,j) == GC_FGD)
+				temp.at<unsigned char>(i,j) = 255;
+			if(m.at<unsigned char>(i,j) == GC_PR_FGD)
+				temp.at<unsigned char>(i,j) = 150;
+			if(m.at<unsigned char>(i,j) == GC_BGD)
+				temp.at<unsigned char>(i,j) = 0;
+			if(m.at<unsigned char>(i,j) == GC_PR_BGD)
+				temp.at<unsigned char>(i,j) = 50;
+		}
+	}
+	imshow("Printed Mask", temp);
+	waitKey();
+	destroyWindow("Printed Mask");
+	temp.release();
+}
+
 
 /** For Simple thresholding on YCrCb and HSV plane based on skin color
 @param img input image to threshold
@@ -398,7 +451,7 @@ Mat HandSegmentator::multiplehandSegmentationGrabCutMask(){
 void HandSegmentator::thresholdingYCrCb(Mat& img){
     Mat hsv;
     cvtColor(img,hsv, COLOR_BGR2HSV);
-    inRange(hsv, Scalar(0, 15, 0), Scalar(17,170,255), hsv);
+    inRange(hsv, Scalar(0, 15, 0), Scalar(17,130,255), hsv);
 
 
     Mat element = getStructuringElement( MORPH_RECT, Size(3, 3) );
@@ -410,7 +463,7 @@ void HandSegmentator::thresholdingYCrCb(Mat& img){
     cvtColor(img, ycrcb, COLOR_BGR2YCrCb);
 
     //skin color range for hsv color space
-    inRange(ycrcb, Scalar(0, 135, 85), Scalar(255,180,135), ycrcb);
+    inRange(ycrcb, Scalar(0, 135, 85), Scalar(255,170,135), ycrcb);
 
     morphologyEx(ycrcb,ycrcb, MORPH_OPEN, element, Point(-1, -1), 2);
 

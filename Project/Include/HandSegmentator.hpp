@@ -32,10 +32,14 @@ class HandSegmentator{
       void thresholdingYCrCb(cv::Mat& img);
 
   	  cv::Mat setGrabCutFlag(const cv::Mat& maskPR, const cv::Mat& mask, int flagDefault, int flagTrue, int flagPR_True);
+	
+	  void combineSkinAndARG(const cv::Mat& skin, cv::Mat& arg);
 
       cv::Mat handMaskWithARG();
 
       void createBinaryMask(cv::Mat& outGC);
+	
+	  void testGrabCutMask(cv::Mat& m); //Only for test
 
 
     public:
