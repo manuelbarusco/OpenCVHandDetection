@@ -138,7 +138,7 @@ void runSegmentatorWithEvaluator(const string& pathFolder, const string& gtPath)
 
     HandDetector hd = configureDetector();
     Evaluator e (gtPath, "../Test/output_evaluation/resultsSegmentation.txt");
-    
+
     for(int i = 0; i < imgs.size(); i++){
         Mat img = imread(imgs[i]);
         Mat imgS = img.clone();

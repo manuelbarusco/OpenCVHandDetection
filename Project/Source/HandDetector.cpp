@@ -8,7 +8,7 @@ using namespace cv;
 using namespace cv::dnn;
 using namespace std;
 
-/** Hand detector constructor
+/** HandDetector constructor
 @param p_net network object for the hand detection
 @param c_names vector of string class names
 */
