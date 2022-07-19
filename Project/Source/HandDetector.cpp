@@ -1,8 +1,8 @@
 //HandDetector.cpp
 
-//Author: Riccardo Rampon
+//@author: Riccardo Rampon
 
-#include "HandDetector.hpp"
+#include "../Include/HandDetector.hpp"
 
 using namespace cv;
 using namespace cv::dnn;
@@ -138,7 +138,7 @@ void HandDetector::refineBBox(const Mat& img, Rect& bbox) {
 * @param Y_bottom y-coordinate of bottom-right point
 */
 void HandDetector::draw_box_prediction(Mat& image, const Scalar& color, int classId, float confidence, int X_top, int Y_top, int X_bottom, int Y_bottom) {
-	
+
 	// Create the box
 	rectangle(image, Point(X_top, Y_top), Point(X_bottom, Y_bottom), color, 2);
 	// Create label and put label + classId

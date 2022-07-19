@@ -138,7 +138,7 @@ void runSegmentatorWithEvaluator(const string& pathFolder, const string& gtPath)
 
     HandDetector hd = configureDetector();
     Evaluator e (gtPath, "../Test/output_evaluation/resultsSegmentation.txt");
-
+    
     for(int i = 0; i < imgs.size(); i++){
         Mat img = imread(imgs[i]);
         Mat imgS = img.clone();
@@ -186,7 +186,7 @@ int userMain(){
 
     cout << "Please select one of the following execution modes: " << "\n"
          << "- d: only detection" << "\n"
-         << "- ds: detection and segmentation" << "\n"
+         << "- s: detection and segmentation" << "\n"
          << "- de: detection with evaluation" << "\n"
          << "- se: segmentation with evaluation" << "\n"
          << "Insert the execution mode (d, ds, de or se):";
@@ -195,7 +195,7 @@ int userMain(){
 
     if(mode.compare("d") == 0){
         runDetector(path);
-    } else if (mode.compare("ds") == 0){
+    } else if (mode.compare("s") == 0){
         runSegmentator(path);
     } else if (mode.compare("de") == 0){
       string gtPath;
