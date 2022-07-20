@@ -176,7 +176,7 @@ void Evaluator::pixelAccuracy(const string& imgFileName, const Mat& maskSegm){
 
     //print in the output file the IoU
     outputFile << "Image: " << imgFileName <<
-                  "Pixel Accuracy: " << accuracy << "\n";
+                  " Pixel Accuracy: " << accuracy << "\n";
 
     //release ground truth file
     imgGT.release();

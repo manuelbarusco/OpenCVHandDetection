@@ -80,7 +80,7 @@ void runSegmentator(const string& pathFolder){
 
     for(int i = 0; i < imgs.size(); i++){
         Mat imgD = imread(imgs[i]);
-        Mat imgS = imread(imgs[i]);
+        Mat imgS = imgD.clone();
         Mat colorHands;
         vector<Mat> outs = hd.forward_process(imgD);
 
