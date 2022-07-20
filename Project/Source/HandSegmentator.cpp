@@ -338,7 +338,7 @@ Mat HandSegmentator::multiplehandSegmentationGrabCutMask(){
 		}
 		else{
 			//Segmentation skin on black and white image
-			cout<<"This is BN image"<<endl;
+			//cout<<"This is BN image"<<endl;
 			cvtColor(roi,skin, COLOR_BGRA2GRAY);
 			threshold(skin,skin, 0, 255, THRESH_BINARY | THRESH_OTSU);
 		}
@@ -350,15 +350,24 @@ Mat HandSegmentator::multiplehandSegmentationGrabCutMask(){
 		bwSmall = handMaskWithARG();
 //		imshow("Segmentation ARG", bwSmall);
 //		waitKey();
+		
+		float thr = 3.5;
+		if (computeQualityOfSkinMask(skin, 255)<thr) {
+			skin = thresholdingWithSampledColor(roi);
+//			imshow("Segmentation using mean sampled color", skin);
+//			waitKey();
+			combineSkinAndARG(skin, bwSmall);
+		}
+		else{
+			//Morphological erosion for creating smaller mask (more likely to be foregorund pixels)
+			Mat bwS_PR_FGD;
+			Mat element = getStructuringElement( MORPH_ELLIPSE, Size(3, 3) );
+			int opIterations = 4;
+			morphologyEx( bwSmall, bwSmall, MORPH_ERODE, element, Point(-1,-1), opIterations );
 
-		//Morphological erosion for creating smaller mask (more likely to be foregorund pixels)
-		Mat bwS_PR_FGD;
-		Mat element = getStructuringElement( MORPH_ELLIPSE, Size(3, 3) );
-		int opIterations = 4;
-		morphologyEx( bwSmall, bwSmall, MORPH_ERODE, element, Point(-1,-1), opIterations );
-
-		//Compine two Segmentation results
-		combineSkinAndARG(skin, bwSmall);
+			//Compine two Segmentation results
+			combineSkinAndARG(skin, bwSmall);
+		}
 //		testGrabCutMask(bwSmall);
 
  		//Superimpose smaller hand mask in a mask of size equal to the original image
@@ -415,11 +424,60 @@ int HandSegmentator::isBlackAndWhite(Mat& img){
 	int BW_img = 1;
 	for(int i = 0; i < img.rows/3; i++){
 		for(int j = 0; j < img.cols/3; j++){
-			if (img.at<Vec3b>(i,j)[0] != img.at<Vec3b>(i,j)[1])
+			if (img.at<Vec3b>(i,j)[0] != img.at<Vec3b>(i,j)[1]) 
 					BW_img = 0;
 		}
 	}
 	return BW_img;
+}
+
+float HandSegmentator::computeQualityOfSkinMask(Mat& m, int value){
+	float activedPixels = 0;
+	for(int i = 0; i < m.rows; i++){
+		for(int j = 0; j < m.cols; j++){
+			if (m.at<unsigned char>(i,j) == value) 
+				activedPixels++;
+		}
+	}
+	float p = (activedPixels/(static_cast<float>(m.rows*m.cols)))*100;
+	return p;
+}
+
+Mat HandSegmentator::thresholdingWithSampledColor(Mat& img){
+	int lTH = 80, hTH = 400, T = 35,b,g,r;
+	int iter = img.rows*img.cols*0.25;
+	int meanB = 0, meanG = 0, meanR = 0;
+	RNG rng = RNG(26414432);
+	
+	for (int i = 1; i<iter; i++) {
+		int randI = rng.uniform(0, img.rows-1), randJ = rng.uniform(0, img.cols-1);
+		b = static_cast<int>(img.at<Vec3b>(randI,randJ)[0]);
+		g = static_cast<int>(img.at<Vec3b>(randI,randJ)[1]);
+		r = static_cast<int>(img.at<Vec3b>(randI,randJ)[2]);
+		
+		//
+		if ((b+r+g>lTH) && (b+r+g<hTH)) {	
+			meanB = meanB + b;
+			meanG = meanG + g;
+			meanR = meanR + r;
+		}
+		else
+			i--;
+	}
+	meanB = meanB/iter;
+	meanG = meanG/iter;
+	meanR = meanR/iter;
+	
+	//Thresholding
+	Mat mask(img.size(),CV_8UC1, Scalar(0));
+	for (int i = 0; i<img.rows; i++) {
+		for (int j = 0; j<img.cols; j++) {
+			if(abs(static_cast<int>(img.at<Vec3b>(i,j)[0]) - meanB) < T && abs(static_cast<int>(img.at<Vec3b>(i,j)[1]) - meanG) < T && abs(static_cast<int>(img.at<Vec3b>(i,j)[2]) - meanR) < T){
+				mask.at<unsigned char>(i,j) = 255;
+			}
+		}
+	}
+	return mask;
 }
 
 //Only for test TODO: delete

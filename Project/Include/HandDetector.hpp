@@ -25,7 +25,7 @@ class HandDetector {
 		//Constants
 		const float INPUT_WIDTH = 416.0;
 		const float INPUT_HEIGHT = 416.0;
-		const float CONFIDENCE_THRESHOLD = 0.75; // Confidence threshold
+		const float CONFIDENCE_THRESHOLD = 0.25; // Confidence threshold
 		const float NMS_THRESHOLD = 0.4; //Non-Maxima-Suppression threshold
 
 		const float FONT_SCALE = 0.5;

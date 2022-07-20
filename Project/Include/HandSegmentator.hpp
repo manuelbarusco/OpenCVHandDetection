@@ -42,7 +42,11 @@ class HandSegmentator{
 
 	  //method that recognizes if img is black and white
 	  int isBlackAndWhite(cv::Mat& img);
-
+	
+ 	  float computeQualityOfSkinMask(cv::Mat& m, int value);
+	
+	  cv::Mat thresholdingWithSampledColor(cv::Mat& img);
+	
 	  void testGrabCutMask(cv::Mat& m); //Only for test
 
 
