@@ -274,7 +274,7 @@ Mat HandSegmentator::advancedRegionGrowing(unsigned char outputValue = 255) {
 }
 
 /**
-@return RoI ìì hand mask useful for multiplehandSegmentationGrabCutMask
+@return Roi  hand mask useful for multiplehandSegmentationGrabCutMask
 */
 Mat HandSegmentator::handMaskWithARG(){
 
@@ -314,7 +314,7 @@ void HandSegmentator::combineSkinAndARG(const Mat& skin, Mat& arg){
 	}
 }
 
-/** main method for segmentation: it merges all
+/** main method for segmentation: it merge the skin detection mask and the mask returned by  advancedRegionGrowing to set the grabcut's flags and run GrabCut algorithm.
 @return inputImg segmentation mask
 */
 Mat HandSegmentator::multiplehandSegmentationGrabCutMask(){
@@ -323,14 +323,13 @@ Mat HandSegmentator::multiplehandSegmentationGrabCutMask(){
 	colorHands = inputImg.clone();
  	int iterations = 5;
 
- 	//Single hand segmentation
- 	//Create vector of images cropped in ROI
+ 	//for each hand detected in the image apply roi segmentation then grabcut alg.
  	for(int i = 0; i<numberHands; i++){
+		//mask of size equal to the original image inizialized with GC_BGD
  		Mat bwBig(inputImg.size(), CV_8UC1,Scalar(GC_BGD));
  		roi = inputImg(std::get<0>(rects[i]));
 		Scalar color = std::get<1>(rects[i]);
 
-		//Test Segmetation skin
 		Mat skin = roi.clone();
 
 		if (!isBlackAndWhite(inputImg)) {
@@ -338,29 +337,22 @@ Mat HandSegmentator::multiplehandSegmentationGrabCutMask(){
 		}
 		else{
 			//Segmentation skin on black and white image
-			//cout<<"This is BN image"<<endl;
 			cvtColor(roi,skin, COLOR_BGRA2GRAY);
 			threshold(skin,skin, 0, 255, THRESH_BINARY | THRESH_OTSU);
 		}
-//		imshow("Segmentation skin", skin);
-//		waitKey();
 
  		//Segmentation on cropped image
  		Mat bwSmall(roi.size(),CV_8UC1, Scalar(0));
 		bwSmall = handMaskWithARG();
-//		imshow("Segmentation ARG", bwSmall);
-//		waitKey();
 		
+		//if skin mask has low percentage of actived pixels use thresholdingWithSampledColor
 		float thr = 3.5;
 		if (computeQualityOfSkinMask(skin, 255)<thr) {
 			skin = thresholdingWithSampledColor(roi);
-//			imshow("Segmentation using mean sampled color", skin);
-//			waitKey();
 			combineSkinAndARG(skin, bwSmall);
 		}
 		else{
 			//Morphological erosion for creating smaller mask (more likely to be foregorund pixels)
-			Mat bwS_PR_FGD;
 			Mat element = getStructuringElement( MORPH_ELLIPSE, Size(3, 3) );
 			int opIterations = 4;
 			morphologyEx( bwSmall, bwSmall, MORPH_ERODE, element, Point(-1,-1), opIterations );
@@ -368,7 +360,6 @@ Mat HandSegmentator::multiplehandSegmentationGrabCutMask(){
 			//Compine two Segmentation results
 			combineSkinAndARG(skin, bwSmall);
 		}
-//		testGrabCutMask(bwSmall);
 
  		//Superimpose smaller hand mask in a mask of size equal to the original image
 		bwSmall.copyTo(bwBig(Rect(std::get<0>(rects[i]).tl().x,std::get<0>(rects[i]).tl().y,bwSmall.cols, bwSmall.rows)));
@@ -376,6 +367,7 @@ Mat HandSegmentator::multiplehandSegmentationGrabCutMask(){
  		//applay GrabCut alg.
  		Mat bgd,fgd;
  		grabCut(inputImg,bwBig,Rect(),bgd,fgd,iterations,GC_INIT_WITH_MASK);
+		
  		//Modify all pixels with GC_PR_FGD to GC_FGD for doing one compare
  		for (int i = 0; i<bwBig.rows; i++) {
  			for (int j = 0; j<bwBig.cols; j++) {
@@ -387,6 +379,7 @@ Mat HandSegmentator::multiplehandSegmentationGrabCutMask(){
 
  		compare(bwBig, GC_FGD, bwBig, CMP_EQ);			// CMP_EQ -> src1 is equal to src2
 
+		//merge previous results with current hand segmentation 
 		inputImg.copyTo(out,bwBig);
 
 		//add color
@@ -417,8 +410,9 @@ Mat HandSegmentator::getColoredHands(){
     return colorHands;
 }
 
-/**  Funcion that check if an 3 channels image is in black and white color
+/**  Method that check if an 3 channels image is in black and white color
  @param img input image to test
+ @return 1 if img is a black and white image 0 otherwise
  */
 int HandSegmentator::isBlackAndWhite(Mat& img){
 	int BW_img = 1;
@@ -431,11 +425,16 @@ int HandSegmentator::isBlackAndWhite(Mat& img){
 	return BW_img;
 }
 
-float HandSegmentator::computeQualityOfSkinMask(Mat& m, int value){
+/** method that compute the percentage of the pixels that have v assigned as value in a image
+ @param m input image 
+ @param v value for which a pixels is cosidered active 
+ @return percentage of active pixels
+ */
+float HandSegmentator::computeQualityOfSkinMask(Mat& m, int v){
 	float activedPixels = 0;
 	for(int i = 0; i < m.rows; i++){
 		for(int j = 0; j < m.cols; j++){
-			if (m.at<unsigned char>(i,j) == value) 
+			if (m.at<unsigned char>(i,j) == v) 
 				activedPixels++;
 		}
 	}
@@ -443,6 +442,10 @@ float HandSegmentator::computeQualityOfSkinMask(Mat& m, int value){
 	return p;
 }
 
+/** Method that thresholds the input image based on the mean of the color of a random sample of pixels, in the sample are excluded pixels which has a color that is certainly a no-hand pixel.
+ @param img input image 
+ @return binary mask
+ */
 Mat HandSegmentator::thresholdingWithSampledColor(Mat& img){
 	int lTH = 80, hTH = 400, T = 35,b,g,r;
 	int iter = img.rows*img.cols*0.25;
@@ -450,12 +453,12 @@ Mat HandSegmentator::thresholdingWithSampledColor(Mat& img){
 	RNG rng = RNG(26414432);
 	
 	for (int i = 1; i<iter; i++) {
+		//random generates a row index and a column index
 		int randI = rng.uniform(0, img.rows-1), randJ = rng.uniform(0, img.cols-1);
 		b = static_cast<int>(img.at<Vec3b>(randI,randJ)[0]);
 		g = static_cast<int>(img.at<Vec3b>(randI,randJ)[1]);
 		r = static_cast<int>(img.at<Vec3b>(randI,randJ)[2]);
-		
-		//
+		//only consider pixels that have the sum of the tre colors between two thresholds
 		if ((b+r+g>lTH) && (b+r+g<hTH)) {	
 			meanB = meanB + b;
 			meanG = meanG + g;
@@ -464,6 +467,7 @@ Mat HandSegmentator::thresholdingWithSampledColor(Mat& img){
 		else
 			i--;
 	}
+	//compute the mean color
 	meanB = meanB/iter;
 	meanG = meanG/iter;
 	meanR = meanR/iter;
@@ -479,28 +483,6 @@ Mat HandSegmentator::thresholdingWithSampledColor(Mat& img){
 	}
 	return mask;
 }
-
-//Only for test TODO: delete
-void HandSegmentator::testGrabCutMask(Mat& m){
-	Mat temp = m.clone();
-	for(int i = 0; i < m.rows; i++){
-		for(int j = 0; j < m.cols; j++){
-			if(m.at<unsigned char>(i,j) == GC_FGD)
-				temp.at<unsigned char>(i,j) = 255;
-			if(m.at<unsigned char>(i,j) == GC_PR_FGD)
-				temp.at<unsigned char>(i,j) = 150;
-			if(m.at<unsigned char>(i,j) == GC_BGD)
-				temp.at<unsigned char>(i,j) = 0;
-			if(m.at<unsigned char>(i,j) == GC_PR_BGD)
-				temp.at<unsigned char>(i,j) = 50;
-		}
-	}
-	imshow("Printed Mask", temp);
-	waitKey();
-	destroyWindow("Printed Mask");
-	temp.release();
-}
-
 
 /** For Simple thresholding on YCrCb and HSV plane based on skin color
 @param img input image to threshold
@@ -532,16 +514,6 @@ void HandSegmentator::thresholdingYCrCb(Mat& img){
 
     img = finalMask;
 
-    /*For Simple thresholding on YCrCb plane based on skin color
-    int Y_MIN  = 0;
-    int Y_MAX  = 255;
-    int Cr_MIN = 133;
-    int Cr_MAX = 173;
-    int Cb_MIN = 77;
-    int Cb_MAX = 127;
-    //first convert our RGB image to YCrCb
-    cvtColor(img,img,COLOR_BGR2YCrCb);
-    inRange(img,Scalar(Y_MIN,Cr_MIN,Cb_MIN),Scalar(Y_MAX,Cr_MAX,Cb_MAX),img);*/
 }
 
 /**
