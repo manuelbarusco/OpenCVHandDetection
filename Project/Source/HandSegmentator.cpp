@@ -305,7 +305,7 @@ void HandSegmentator::combineSkinAndARG(const Mat& skin, Mat& arg){
 					arg.at<unsigned char>(i,j) = GC_PR_BGD;
 				}
 			}
-			
+
 			//Set to BGD very dark pixels
 			if((int)roi.at<Vec3b>(i,j)[0]<th && (int)roi.at<Vec3b>(i,j)[1]<th && (int)roi.at<Vec3b>(i,j)[2]<th){
 				arg.at<unsigned char>(i,j) = GC_BGD;
@@ -315,12 +315,12 @@ void HandSegmentator::combineSkinAndARG(const Mat& skin, Mat& arg){
 }
 
 /** main method for segmentation: it merges all
-@return inputImg segmented
+@return inputImg segmentation mask
 */
 Mat HandSegmentator::multiplehandSegmentationGrabCutMask(){
 
     Mat out(inputImg.size(), inputImg.type(),Scalar(0,0,0));
-	Mat colorHands = inputImg.clone();
+	colorHands = inputImg.clone();
  	int iterations = 5;
 
  	//Single hand segmentation
@@ -332,7 +332,7 @@ Mat HandSegmentator::multiplehandSegmentationGrabCutMask(){
 
 		//Test Segmetation skin
 		Mat skin = roi.clone();
-		
+
 		if (!isBlackAndWhite(inputImg)) {
 			thresholdingYCrCb(skin);
 		}
@@ -350,7 +350,7 @@ Mat HandSegmentator::multiplehandSegmentationGrabCutMask(){
 		bwSmall = handMaskWithARG();
 //		imshow("Segmentation ARG", bwSmall);
 //		waitKey();
-		
+
 		//Morphological erosion for creating smaller mask (more likely to be foregorund pixels)
 		Mat bwS_PR_FGD;
 		Mat element = getStructuringElement( MORPH_ELLIPSE, Size(3, 3) );
@@ -392,30 +392,30 @@ Mat HandSegmentator::multiplehandSegmentationGrabCutMask(){
 						colorHands.at<Vec3b>(i,j)[2] = color[2]/2;
 				}
 
-//		imshow("Segmetation result with colors", colorHands);
-//		waitKey();
 		bwBig.release();
 		bwSmall.release();
  	}
-//    imshow("Segmetation result with colors", colorHands);
-//    waitKey();
 
-//	imshow("Segmetation result", out);
-//	waitKey();
-	
 	destroyAllWindows();
 	createBinaryMask(out);
     return out;
 }
 
-/**  Funcion that check if an 3 channels image is in black and white color 
- @param img input image to test 
+/** method that returns the colored hands image
+@return colored hands image
+*/
+Mat HandSegmentator::getColoredHands(){
+    return colorHands;
+}
+
+/**  Funcion that check if an 3 channels image is in black and white color
+ @param img input image to test
  */
 int HandSegmentator::isBlackAndWhite(Mat& img){
 	int BW_img = 1;
 	for(int i = 0; i < img.rows/3; i++){
 		for(int j = 0; j < img.cols/3; j++){
-			if (img.at<Vec3b>(i,j)[0] != img.at<Vec3b>(i,j)[1]) 
+			if (img.at<Vec3b>(i,j)[0] != img.at<Vec3b>(i,j)[1])
 					BW_img = 0;
 		}
 	}

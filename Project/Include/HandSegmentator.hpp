@@ -13,6 +13,7 @@ class HandSegmentator{
       cv::Mat inputImg;                                              //input image to segment
       cv::Mat roi;                                                   //single hand RoI
       cv::Mat edgeMap;                                               //edgeMap of the hand RoI
+      cv::Mat colorHands;                                            //input image with colored hands
   	  int numberHands = 0;                                           //number of hand detections in the input image
   	  std::vector<std::pair<cv::Rect,cv::Scalar>> rects;             //hand detections in the input image
 
@@ -38,10 +39,10 @@ class HandSegmentator{
 
       //method that returns the final binary mask from the input image
       void createBinaryMask(cv::Mat& outGC);
-	
-	  //method that recognizes if img is black and white 
+
+	  //method that recognizes if img is black and white
 	  int isBlackAndWhite(cv::Mat& img);
-	
+
 	  void testGrabCutMask(cv::Mat& m); //Only for test
 
 
@@ -51,6 +52,9 @@ class HandSegmentator{
 
       //main method for image segmentation
       cv::Mat multiplehandSegmentationGrabCutMask();
+
+      //method for colored hands segmention results
+      cv::Mat getColoredHands();
 
       //destructor
       ~HandSegmentator();
