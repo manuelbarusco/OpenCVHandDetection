@@ -142,7 +142,7 @@ void HandDetector::draw_box_prediction(Mat& image, const Scalar& color, int clas
 	// Create the box
 	rectangle(image, Point(X_top, Y_top), Point(X_bottom, Y_bottom), color, 2);
 	// Create label and put label + classId
-	string label = format("%.f", confidence);
+	string label = format("%.2f", confidence);
 	label = class_names[classId] + ":" + label;
 	putText(image, label, Point(X_top, Y_top - 10), FONT_TYPE, FONT_SCALE, color, FONT_THICKNESS);
 
