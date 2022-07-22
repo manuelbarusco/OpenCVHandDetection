@@ -2,4 +2,6 @@
 .DS_Store
 
 Project/Models
-Project/Test
+Project/Test/output_detection/
+Project/Test/output_evaluation/
+Project/Test/output_segmentation/
