@@ -30,12 +30,12 @@ HandSegmentator::HandSegmentator(const Mat& iImg, const int nHands, const vector
 @param weightY weight for the y-position component in the feature vector
 @param threeChannels boolean that indicates if img is a 3-channels img
 */
-void HandSegmentator::minMaxNormalization(Mat &img, float weightX, float weightY, bool treeChannels){
+void HandSegmentator::minMaxNormalization(Mat &img, float weightX, float weightY, bool threeChannels){
     int dim = 3;
-    if (treeChannels)
+    if (threeChannels)
         dim = 5;
     int weights[dim];
-    if (treeChannels){
+    if (threeChannels){
         weights[0]= 1; weights[1]= 1; weights[2]= 1; weights[3] = weightY; weights[4] = weightX;
     }
     else{
@@ -74,7 +74,7 @@ void HandSegmentator::minMaxNormalization(Mat &img, float weightX, float weightY
 @return img segmented
 */
 Mat HandSegmentator::kmeansSegmentationPositionQuantization(int K, float weightX,float weightY){
-    Mat labels, centers,temp;
+    Mat labels, centers;
 
     //Conver to float for kmeans
     roi.convertTo(roi, CV_32FC3, 1.0/255.0);
@@ -458,7 +458,7 @@ Mat HandSegmentator::thresholdingWithSampledColor(Mat& img){
 		b = static_cast<int>(img.at<Vec3b>(randI,randJ)[0]);
 		g = static_cast<int>(img.at<Vec3b>(randI,randJ)[1]);
 		r = static_cast<int>(img.at<Vec3b>(randI,randJ)[2]);
-		//only consider pixels that have the sum of the tre colors between two thresholds
+		//only consider pixels that have the sum of the three colors between two thresholds
 		if ((b+r+g>lTH) && (b+r+g<hTH)) {	
 			meanB = meanB + b;
 			meanG = meanG + g;

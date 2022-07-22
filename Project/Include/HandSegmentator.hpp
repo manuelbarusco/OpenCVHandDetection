@@ -27,7 +27,7 @@ class HandSegmentator{
       cv::Mat handMaskWithARG();
 
       //method for min max normalization for kmeans based on pixel color and position
-      void minMaxNormalization(cv::Mat& img, float weightX, float weightY, bool treeChannels);
+      void minMaxNormalization(cv::Mat& img, float weightX, float weightY, bool threeChannels);
 
       //method for performing kmeans based on pixel color and position
       cv::Mat kmeansSegmentationPositionQuantization(int K, float weighX,float weightY);
